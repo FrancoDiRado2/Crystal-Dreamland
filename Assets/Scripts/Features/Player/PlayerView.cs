@@ -78,12 +78,16 @@ public class PlayerView : MonoBehaviour
             _horizontalMove = moveDir * targetSpeed;
 
             // 2. Calculamos el valor para el Animator (Speed)
-            // Esto hace que si corrés al doble de velocidad, la animación sea el doble de rápida
             float animMultiplier = targetSpeed / _viewModel.WalkSpeed; 
             UpdateMoveAnimation(input.magnitude * animMultiplier);
 
-            Quaternion targetRot = Quaternion.LookRotation(moveDir);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, _viewModel.RotationSpeed * Time.deltaTime);
+            // --- ARREGLO: La rotación automática solo ocurre en 3ra persona ---
+            // Asegurate de que tu cámara de primera persona tenga el nombre "FirstPersonCamera"
+            if (Camera.main.name != "FirstPersonCamera")
+            {
+                Quaternion targetRot = Quaternion.LookRotation(moveDir);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, _viewModel.RotationSpeed * Time.deltaTime);
+            }
         }
         else
         {
