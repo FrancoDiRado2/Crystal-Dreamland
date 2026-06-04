@@ -46,11 +46,14 @@ private void Start()
 
     private void Update()
     {
-        // Detectar la tecla Escape con el nuevo Input System
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            // Opcional: Evitar que se pause si todavía no puso el nombre
-            if (MainHUDView.Instance != null && !MainHUDView.Instance.HasSetPlayerName) return;
+            // Solo evitamos la pausa si el jugador no puso su nombre y el cartel sigue activo.
+            // Usamos un chequeo seguro: si el nombre es vacío, no pausa.
+            if (MainHUDView.Instance != null && !MainHUDView.Instance.HasSetPlayerName)
+            {
+                return; 
+            }
 
             if (isPaused)
                 ResumeGame();

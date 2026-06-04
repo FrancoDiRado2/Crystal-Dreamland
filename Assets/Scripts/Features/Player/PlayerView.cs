@@ -104,4 +104,14 @@ public class PlayerView : MonoBehaviour
     {
         _animator.SetTrigger("Jump");
     }
+
+    private void OnDisable()
+    {
+        // Si alguien apaga este script (como el CombatManager), 
+        // forzamos al Animator a volver a Idle.
+        if (_animator != null)
+        {
+            _animator.SetFloat("Speed", 0f);
+        }
+    }
 }

@@ -42,7 +42,7 @@ public class EnemyView : MonoBehaviour
 
     private void HandleDefeated()
     {
-        if (animator != null) animator.SetTrigger("Die");
+        if (animator != null) //animator.SetTrigger("Die");
         GetComponent<Collider>().enabled = false; // Apagamos el trigger para que no moleste más
     }
 

@@ -9,7 +9,7 @@ public class LevelBootstrapper : MonoBehaviour
     
     [Header("Referencia Global")]
     public PlayerViewModel playerViewModel; // NUEVO: Arrastrá a Aman acá
-
+    public CombatManagerView combatManagerView;
     private LevelModel _levelModel;
     private LevelViewModel _levelViewModel;
     
@@ -35,5 +35,6 @@ public class LevelBootstrapper : MonoBehaviour
         
         // Inyectamos al enemigo pasándole su propia lógica Y la del jugador
         if (enemyView != null) enemyView.Initialize(_enemyViewModel, playerViewModel);
+        if (combatManagerView != null) combatManagerView.Initialize(_enemyViewModel);
     }
 }
