@@ -1,6 +1,7 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; // NUEVO: Necesario para recargar el nivel
+using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
+using TMPro; // NUEVO: Para cambiar los textos
 
 public class CombatManagerView : MonoBehaviour
 {
@@ -13,8 +14,15 @@ public class CombatManagerView : MonoBehaviour
     public GameObject combatCamera; 
     public GameObject combatCanvas; 
 
-    [Header("Game Over (NUEVO)")]
-    public GameObject gameOverCanvas; // El nuevo canvas de Derrota
+    [Header("Game Over / Victoria (Detalles finales)")]
+    public GameObject gameOverCanvas; 
+    public GameObject garmanarModel; // NUEVO: Para desaparecerlo
+    public GameObject muroInvisible; // NUEVO: Para bloquear la vuelta al bosque
+    
+    // NUEVO: Los textos del HUD que queremos cambiar al ganar
+    public TextMeshProUGUI portalStatusText; 
+    public TextMeshProUGUI powerStatusText; 
+    public GameObject objectiveText;
 
     private EnemyViewModel _enemyViewModel;
     private CombatViewModel _combatViewModel; 
@@ -25,14 +33,11 @@ public class CombatManagerView : MonoBehaviour
         _combatViewModel = combatViewModel;
 
         _enemyViewModel.OnCombatStarted += StartCombatTransition;
-        // NUEVO: Ahora esta función recibe un bool
         _combatViewModel.OnCombatEnded += EndCombatTransition; 
     }
 
     private void StartCombatTransition()
     {
-        Debug.Log("Iniciando transición visual al combate...");
-
         if (playerView != null) playerView.enabled = false; 
         if (mainHUD != null) mainHUD.SetActive(false);
         if (mainCamera != null) mainCamera.SetActive(false);
@@ -44,47 +49,44 @@ public class CombatManagerView : MonoBehaviour
         Cursor.visible = true;
     }
 
-    // NUEVO: Ahora recibe "playerWon"
     private async void EndCombatTransition(bool playerWon)
     {
         await Task.Delay(3000); 
 
-        // Apagamos la UI de combate en ambos casos
         if (combatCanvas != null) combatCanvas.SetActive(false);
 
         if (playerWon)
         {
-            Debug.Log("Victoria: Volviendo a la exploración...");
-            
             if (combatCamera != null) combatCamera.SetActive(false);
             if (mainCamera != null) mainCamera.SetActive(true);
             if (mainHUD != null) mainHUD.SetActive(true);
 
-            // Devolvemos el control a Aman
             if (playerView != null) playerView.enabled = true; 
 
-            // Ocultamos el mouse de nuevo
+            // 1. DESAPARECER A GARMANAR
+            if (garmanarModel != null) garmanarModel.SetActive(false);
+
+            // 2. PRENDER EL MURO INVISIBLE
+            if (muroInvisible != null) muroInvisible.SetActive(true);
+
+            // 3. CAMBIAR LOS TEXTOS DEL HUD
+            if (portalStatusText != null) portalStatusText.text = "¡Cross the Door!";
+            if (powerStatusText != null) powerStatusText.text = "Free Way";
+            if (objectiveText != null) objectiveText.SetActive(false);
+
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
         else
         {
-            Debug.Log("Derrota: Mostrando Game Over...");
-            
-            // Si pierde, no apagamos la cámara de combate, solo prendemos el cartel de derrota
             if (gameOverCanvas != null) gameOverCanvas.SetActive(true);
-            
-            // Aseguramos que el mouse siga libre para clickear "Reintentar"
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
     }
 
-    // NUEVO: Función que conectaremos al botón de "Reintentar"
     public void RestartLevel()
     {
-        Debug.Log("Reiniciando nivel...");
-        // Recarga la escena actual desde cero, reseteando todas las variables y la posición
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
