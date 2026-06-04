@@ -5,10 +5,9 @@ public class PlayerViewModel : MonoBehaviour
 {
     [SerializeField] private PlayerModel data;
 
-    // Eventos para la UI y otros sistemas lógicos
     public event Action<int> OnPowerChanged; 
+    public event Action<int> OnHealthChanged; // NUEVO: Para que la barra roja se entere
 
-    // Propiedades expuestas para que el View las lea en tiempo real
     public float WalkSpeed => data.walkSpeed;
     public float SprintSpeed => data.sprintSpeed;
     public float RotationSpeed => data.rotationSpeed;
@@ -17,20 +16,27 @@ public class PlayerViewModel : MonoBehaviour
 
     private void Awake()
     {
-        // Se asegura que el poder arranque en 10 cada vez que ejecutás la escena
         data.currentPower = 15; 
+        data.currentHealth = data.maxHealth; // Resetea la vida al empezar el juego
     }
 
-    // Método para que llamen los cristales
     public void AddPower(int amount)
     {
         data.currentPower += amount;
-        Debug.Log($"Poder total: {data.currentPower}");
         OnPowerChanged?.Invoke(data.currentPower);
     }
 
     public int GetCurrentPower() 
     { 
         return data.currentPower; 
+    }
+
+    // NUEVO: Método para que el Jefe le pegue a Aman
+    public void TakeDamage(int damage)
+    {
+        data.currentHealth -= damage;
+        if (data.currentHealth < 0) data.currentHealth = 0;
+        
+        OnHealthChanged?.Invoke(data.currentHealth);
     }
 }

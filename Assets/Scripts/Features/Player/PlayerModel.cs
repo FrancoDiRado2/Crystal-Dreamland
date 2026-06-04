@@ -11,5 +11,9 @@ public class PlayerModel : ScriptableObject
     public float gravity = -9.81f;
 
     [Header("Combat Stats")]
-    public int currentPower = 10;
+    public int currentPower = 15;
+    
+    // NUEVO: Agregamos la vida de Aman
+    public int maxHealth = 100; 
+    public int currentHealth = 100; 
 }

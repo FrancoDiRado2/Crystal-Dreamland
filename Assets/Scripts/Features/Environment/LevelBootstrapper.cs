@@ -40,6 +40,6 @@ public class LevelBootstrapper : MonoBehaviour
         // Creamos la lógica de turnos
         CombatViewModel combatViewModel = new CombatViewModel(_enemyViewModel, playerViewModel);
         // Se la inyectamos a tu nuevo Canvas
-        if (combatCanvasView != null) combatCanvasView.Initialize(combatViewModel, playerViewModel);
-    }
+        // Le pasamos el combatVM, el playerVM y el _enemyViewModel
+        if (combatCanvasView != null) combatCanvasView.Initialize(combatViewModel, playerViewModel, _enemyViewModel);    }
 }

@@ -1,16 +1,15 @@
 using System;
 using System.Threading.Tasks;
+using UnityEngine; // Necesario para el Random
 
 public class CombatViewModel
 {
     private EnemyViewModel _enemyVM;
     private PlayerViewModel _playerVM;
 
-    // Estado del combate
     public bool IsPlayerTurn { get; private set; } = true;
     public string CurrentTurnMessage { get; private set; }
 
-    // Eventos para que la UI se actualice
     public event Action<string> OnTurnMessageChanged;
     public event Action OnCombatEnded;
 
@@ -30,28 +29,30 @@ public class CombatViewModel
 
     public async void PlayerAttack()
     {
-        if (!IsPlayerTurn) return; // Evita doble clic
-        
+        if (!IsPlayerTurn) return; 
         IsPlayerTurn = false;
         
-        // --- LA MATEMÁTICA DEL DAÑO ---
-        int baseDamage = 10;
-        int currentCrystals = _playerVM.GetCurrentPower();
-        int extraCrystals = currentCrystals - 25; // 25 es lo que exige la puerta
+        // 1. Tu daño es exactamente tu poder (cristales)
+        int finalDamage = _playerVM.GetCurrentPower();
         
-        // Si juntó más de 25, pega más fuerte. (Por ej: 5 de daño extra por cada cristal)
-        int finalDamage = baseDamage;
-        if (extraCrystals > 0)
+        // 2. Calculamos probabilidad de crítico (30% de chances)
+        bool isCritical = UnityEngine.Random.Range(0, 100) < 30;
+
+        if (isCritical)
         {
-            finalDamage += (extraCrystals * 5);
+            finalDamage += 5; // Le sumamos 5 extra por crítico
+            CurrentTurnMessage = $"¡GOLPE CRÍTICO! Sacás {finalDamage} de daño.";
+        }
+        else
+        {
+            CurrentTurnMessage = $"¡Atacás con {finalDamage} de daño!";
         }
 
-        CurrentTurnMessage = $"¡Atacás con {finalDamage} de daño!";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
+        // Le pegamos al jefe
         _enemyVM.TakeDamage(finalDamage);
 
-        // Esperamos 2 segundos para que el jugador lea el texto y vea la animación
         await Task.Delay(2000); 
 
         if (_enemyVM.IsDefeated)
@@ -72,8 +73,6 @@ public class CombatViewModel
         CurrentTurnMessage = "¡Te curás! (Aún por implementar)";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
-        // Acá a futuro llamarías a _playerVM.Heal(20);
-        // Por ahora pasamos de turno directamente
         StartEnemyTurn(); 
     }
 
@@ -82,14 +81,14 @@ public class CombatViewModel
         CurrentTurnMessage = "Turno del Jefe...";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
-        // El enemigo "piensa" 1.5 segundos
         await Task.Delay(1500);
 
         int enemyDamage = 15;
         CurrentTurnMessage = $"¡El Jefe te ataca y quita {enemyDamage}!";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
-        // Acá a futuro llamarías a _playerVM.TakeDamage(enemyDamage);
+        // 3. AHORA SÍ: El jefe le baja la vida real a Aman
+        _playerVM.TakeDamage(enemyDamage);
         
         await Task.Delay(1500);
         StartPlayerTurn();
@@ -98,13 +97,9 @@ public class CombatViewModel
     private void EndCombat(bool playerWon)
     {
         if (playerWon)
-        {
-            CurrentTurnMessage = "¡VICTORIA!";
-        }
+            CurrentTurnMessage = "¡VICTORIA! Portal desbloqueado.";
         else
-        {
             CurrentTurnMessage = "Has sido derrotado...";
-        }
         
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         OnCombatEnded?.Invoke();
