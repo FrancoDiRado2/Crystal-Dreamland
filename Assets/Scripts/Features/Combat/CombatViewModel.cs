@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using UnityEngine; // Necesario para Random
+using UnityEngine; // Necesario para el Random
 
 public class CombatViewModel
 {
@@ -32,15 +32,15 @@ public class CombatViewModel
         if (!IsPlayerTurn) return; 
         IsPlayerTurn = false;
         
-        // El daño base es el poder total de Aman
+        // 1. Tu daño es exactamente tu poder (cristales)
         int finalDamage = _playerVM.GetCurrentPower();
         
-        // Chance de Crítico (30% de probabilidad)
+        // 2. Calculamos probabilidad de crítico (30% de chances)
         bool isCritical = UnityEngine.Random.Range(0, 100) < 30;
 
         if (isCritical)
         {
-            finalDamage += 5; 
+            finalDamage += 5; // Le sumamos 5 extra por crítico
             CurrentTurnMessage = $"¡GOLPE CRÍTICO! Sacás {finalDamage} de daño.";
         }
         else
@@ -50,21 +50,43 @@ public class CombatViewModel
 
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
+        // Le pegamos al jefe
         _enemyVM.TakeDamage(finalDamage);
 
         await Task.Delay(2000); 
 
         if (_enemyVM.IsDefeated)
+        {
             EndCombat(true);
+        }
         else
+        {
             StartEnemyTurn();
+        }
     }
 
-    public void PlayerHeal()
+    // NUEVO: Lógica de curación con validación
+    public async void PlayerHeal()
     {
-        // Por ahora mantenemos el botón sin lógica extra, solo pasa el turno
-        CurrentTurnMessage = "¡Turno pasado!";
+        if (!IsPlayerTurn) return;
+
+        // Comprobamos si tiene suficientes cristales extra (Cuesta 5, mínimo a mantener 25)
+        if (_playerVM.GetCurrentPower() - 5 < 25)
+        {
+            CurrentTurnMessage = "No puedes descender de 25 de poder.";
+            OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
+            return; // Corta la ejecución, no pasa de turno y te deja elegir Atacar.
+        }
+
+        IsPlayerTurn = false; // Solo pasa el turno si la validación es correcta
+        
+        _playerVM.ConsumePower(5);
+        _playerVM.Heal(25);
+
+        CurrentTurnMessage = "Te has curado 25 de vida.";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
+        
+        await Task.Delay(2000);
         StartEnemyTurn(); 
     }
 
@@ -72,21 +94,48 @@ public class CombatViewModel
     {
         CurrentTurnMessage = "Turno de Garmanar...";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
+        
         await Task.Delay(1500);
 
-        int enemyDamage = 15;
-        CurrentTurnMessage = $"¡Garmanar te ataca y quita {enemyDamage}!";
+        // NUEVO: Daño base de 25 y 30% de chances de crítico para el Jefe
+        int enemyDamage = 40;
+        bool isEnemyCritical = UnityEngine.Random.Range(0, 100) < 30;
+
+        if (isEnemyCritical)
+        {
+            enemyDamage += 10; // Saca 50 en crítico
+            CurrentTurnMessage = $"¡GOLPE CRÍTICO! Garmanar quita {enemyDamage} de vida.";
+        }
+        else
+        {
+            CurrentTurnMessage = $"¡Garmanar te ataca y quita {enemyDamage} de vida!";
+        }
+        
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
+        // El jefe le baja la vida real a Aman
         _playerVM.TakeDamage(enemyDamage);
         
         await Task.Delay(1500);
-        StartPlayerTurn();
+
+        // NUEVO: Chequeo de Derrota
+        if (_playerVM.IsDefeated)
+        {
+            EndCombat(false); // Falso = Perdió el jugador
+        }
+        else
+        {
+            StartPlayerTurn();
+        }
     }
 
     private void EndCombat(bool playerWon)
     {
-        CurrentTurnMessage = playerWon ? "¡VICTORIA! Portal desbloqueado." : "Has sido derrotado...";
+        if (playerWon)
+            CurrentTurnMessage = "¡VICTORIA! Portal desbloqueado.";
+        else
+            CurrentTurnMessage = "Has sido derrotado..."; // Ya tenías el mensaje preparado
+        
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         OnCombatEnded?.Invoke();
     }

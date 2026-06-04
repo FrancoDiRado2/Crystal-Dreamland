@@ -1,27 +1,31 @@
 using System;
+using UnityEngine; 
 
 public class EnemyViewModel
 {
     private EnemyModel _model;
-    
-    // Eventos para la UI y la vista
+
+    // --- EVENTOS ---
     public event Action<int> OnHealthChanged;
     public event Action OnDefeated;
-    public event Action OnCombatStarted;
-    public event Action OnNotEnoughPower;
+    public event Action OnNotEnoughPower; 
+    public event Action OnCombatStarted; 
 
-    public bool IsDefeated => _model.IsDefeated;
+    public bool IsDefeated => _model.currentHealth <= 0;
 
     public EnemyViewModel(EnemyModel model)
     {
         _model = model;
+        _model.currentHealth = _model.maxHealth;
     }
 
+    // --- MÉTODOS PARA COMUNICARSE CON LA VISTA ---
+
+    // ¡ACÁ ESTÁ EL MÉTODO QUE FALTABA!
+    // Evalúa si Aman tiene el poder necesario y dispara el evento correspondiente
     public void TryStartCombat(int playerPower)
     {
-        if (_model.IsDefeated) return;
-
-        if (playerPower >= _model.RequiredPowerToFight)
+        if (playerPower >= 25)
         {
             OnCombatStarted?.Invoke();
         }
@@ -31,18 +35,43 @@ public class EnemyViewModel
         }
     }
 
+    public void NotifyNotEnoughPower()
+    {
+        OnNotEnoughPower?.Invoke();
+    }
+
+    public void StartCombat()
+    {
+        OnCombatStarted?.Invoke();
+    }
+
+    // --- LÓGICA DE DAÑO ---
+
     public void TakeDamage(int damage)
     {
-        if (_model.IsDefeated) return;
+        if (IsDefeated) return;
 
-        _model.CurrentHealth -= damage;
-        OnHealthChanged?.Invoke(_model.CurrentHealth);
+        _model.currentHealth -= damage;
+        if (_model.currentHealth < 0) _model.currentHealth = 0;
 
-        if (_model.CurrentHealth <= 0)
+        OnHealthChanged?.Invoke(_model.currentHealth);
+
+        if (_model.currentHealth == 0)
         {
-            _model.CurrentHealth = 0;
-            _model.IsDefeated = true;
             OnDefeated?.Invoke();
         }
+    }
+
+    public (int damage, bool isCritical) GetAttackDamage()
+    {
+        int finalDamage = _model.baseDamage;
+        bool isCritical = UnityEngine.Random.Range(0, 100) < _model.criticalChance;
+
+        if (isCritical)
+        {
+            finalDamage += _model.criticalBonus;
+        }
+
+        return (finalDamage, isCritical); 
     }
 }

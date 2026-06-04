@@ -1,9 +1,10 @@
 public class EnemyModel
 {
-    public int MaxHealth { get; set; } = 100;
-    public int CurrentHealth { get; set; } = 100;
-    public bool IsDefeated { get; set; } = false;
+    public int maxHealth = 100;
+    public int currentHealth = 100;
     
-    // Lo igualamos a lo que pide tu HUD
-    public int RequiredPowerToFight { get; set; } = 25; 
+    // NUEVO: Estadísticas de combate del jefe
+    public int baseDamage = 25;
+    public int criticalChance = 30; // 30% de probabilidad
+    public int criticalBonus = 5;   // Cuánto suma el crítico
 }
