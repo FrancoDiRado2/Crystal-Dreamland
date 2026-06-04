@@ -43,10 +43,14 @@ public class LevelBootstrapper : MonoBehaviour
         if (portalView != null) portalView.Initialize(_levelViewModel);
         if (levelManagerView != null) levelManagerView.Initialize(_levelViewModel);
         if (enemyView != null) enemyView.Initialize(_enemyViewModel, playerViewModel);
-        if (combatManagerView != null) combatManagerView.Initialize(_enemyViewModel);
+        
+        // BORRAMOS el combatManagerView de acá arriba (Paso 5) y lo pasamos abajo
 
-        // 6. ARMAMOS EL COMBATE (Requiere tanto al enemigo como al jugador)
+        // 6. ARMAMOS EL COMBATE 
         CombatViewModel combatViewModel = new CombatViewModel(_enemyViewModel, playerViewModel);
         if (combatCanvasView != null) combatCanvasView.Initialize(combatViewModel, playerViewModel, _enemyViewModel);
+
+        // 7. INYECTAMOS EL MANAGER DE TRANSICIÓN (Ahora le pasamos los dos)
+        if (combatManagerView != null) combatManagerView.Initialize(_enemyViewModel, combatViewModel);
     }
 }
