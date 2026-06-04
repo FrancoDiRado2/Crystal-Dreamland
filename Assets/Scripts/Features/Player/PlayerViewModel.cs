@@ -1,12 +1,12 @@
-using UnityEngine;
 using System;
 
-public class PlayerViewModel : MonoBehaviour
+// Fíjate que ya NO hereda de MonoBehaviour
+public class PlayerViewModel
 {
-    [SerializeField] private PlayerModel data;
+    private PlayerModel data;
 
     public event Action<int> OnPowerChanged; 
-    public event Action<int> OnHealthChanged; // NUEVO: Para que la barra roja se entere
+    public event Action<int> OnHealthChanged;
 
     public float WalkSpeed => data.walkSpeed;
     public float SprintSpeed => data.sprintSpeed;
@@ -14,10 +14,12 @@ public class PlayerViewModel : MonoBehaviour
     public float JumpForce => data.jumpForce;
     public float Gravity => data.gravity;
 
-    private void Awake()
+    // Ahora recibe los datos a través del constructor
+    public PlayerViewModel(PlayerModel model)
     {
+        data = model;
         data.currentPower = 15; 
-        data.currentHealth = data.maxHealth; // Resetea la vida al empezar el juego
+        data.currentHealth = data.maxHealth;
     }
 
     public void AddPower(int amount)
@@ -31,7 +33,6 @@ public class PlayerViewModel : MonoBehaviour
         return data.currentPower; 
     }
 
-    // NUEVO: Método para que el Jefe le pegue a Aman
     public void TakeDamage(int damage)
     {
         data.currentHealth -= damage;

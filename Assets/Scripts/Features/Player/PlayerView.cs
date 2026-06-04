@@ -7,23 +7,34 @@ public class PlayerView : MonoBehaviour
     [Header("UI Reference")]
     [SerializeField] private MainHUDView _hudView;
 
+    // Propiedad pública para que los cristales puedan interactuar con el cerebro
+    public PlayerViewModel ViewModel => _viewModel; 
+    private PlayerViewModel _viewModel;
+
     private Animator _animator;
     private CharacterController _controller;
-    private PlayerViewModel _viewModel;
 
     private Vector3 _velocity;
     private Vector3 _horizontalMove;
     private bool _isGrounded;
 
+    // El Bootstrapper le da el cerebro cuando arranca el juego
+    public void Initialize(PlayerViewModel viewModel)
+    {
+        _viewModel = viewModel;
+    }
+
     private void Awake()
     {
         _animator = GetComponent<Animator>();
         _controller = GetComponent<CharacterController>();
-        _viewModel = GetComponent<PlayerViewModel>(); 
     }
 
     private void Update()
     {
+        // Freno de seguridad: esperamos a que el Bootstrapper nos dé el ViewModel
+        if (_viewModel == null) return; 
+
         // Bloqueo por nombre
         if (_hudView != null && !_hudView.HasSetPlayerName)
         {
@@ -34,7 +45,6 @@ public class PlayerView : MonoBehaviour
         _isGrounded = _controller.isGrounded;
         if (_isGrounded && _velocity.y < 0) _velocity.y = -2f;
 
-        // Detectar si se presiona Shift para correr
         bool isSprinting = Keyboard.current != null && Keyboard.current.shiftKey.isPressed;
 
         Vector2 inputVector = Vector2.zero;
@@ -73,16 +83,12 @@ public class PlayerView : MonoBehaviour
 
             Vector3 moveDir = forward * input.y + right * input.x;
             
-            // 1. Aplicamos la velocidad física
             float targetSpeed = isSprinting ? _viewModel.SprintSpeed : _viewModel.WalkSpeed;
             _horizontalMove = moveDir * targetSpeed;
 
-            // 2. Calculamos el valor para el Animator (Speed)
             float animMultiplier = targetSpeed / _viewModel.WalkSpeed; 
             UpdateMoveAnimation(input.magnitude * animMultiplier);
 
-            // --- ARREGLO: La rotación automática solo ocurre en 3ra persona ---
-            // Asegurate de que tu cámara de primera persona tenga el nombre "FirstPersonCamera"
             if (Camera.main.name != "FirstPersonCamera")
             {
                 Quaternion targetRot = Quaternion.LookRotation(moveDir);
@@ -107,8 +113,7 @@ public class PlayerView : MonoBehaviour
 
     private void OnDisable()
     {
-        // Si alguien apaga este script (como el CombatManager), 
-        // forzamos al Animator a volver a Idle.
+        // Salvavidas para que no haga Moonwalk en el menú de pausa o combate
         if (_animator != null)
         {
             _animator.SetFloat("Speed", 0f);

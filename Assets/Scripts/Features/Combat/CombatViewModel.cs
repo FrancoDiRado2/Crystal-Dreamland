@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using UnityEngine; // Necesario para el Random
+using UnityEngine; // Necesario para Random
 
 public class CombatViewModel
 {
@@ -32,15 +32,15 @@ public class CombatViewModel
         if (!IsPlayerTurn) return; 
         IsPlayerTurn = false;
         
-        // 1. Tu daño es exactamente tu poder (cristales)
+        // El daño base es el poder total de Aman
         int finalDamage = _playerVM.GetCurrentPower();
         
-        // 2. Calculamos probabilidad de crítico (30% de chances)
+        // Chance de Crítico (30% de probabilidad)
         bool isCritical = UnityEngine.Random.Range(0, 100) < 30;
 
         if (isCritical)
         {
-            finalDamage += 5; // Le sumamos 5 extra por crítico
+            finalDamage += 5; 
             CurrentTurnMessage = $"¡GOLPE CRÍTICO! Sacás {finalDamage} de daño.";
         }
         else
@@ -50,44 +50,34 @@ public class CombatViewModel
 
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
-        // Le pegamos al jefe
         _enemyVM.TakeDamage(finalDamage);
 
         await Task.Delay(2000); 
 
         if (_enemyVM.IsDefeated)
-        {
             EndCombat(true);
-        }
         else
-        {
             StartEnemyTurn();
-        }
     }
 
     public void PlayerHeal()
     {
-        if (!IsPlayerTurn) return;
-        IsPlayerTurn = false;
-        
-        CurrentTurnMessage = "¡Te curás! (Aún por implementar)";
+        // Por ahora mantenemos el botón sin lógica extra, solo pasa el turno
+        CurrentTurnMessage = "¡Turno pasado!";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
-        
         StartEnemyTurn(); 
     }
 
     private async void StartEnemyTurn()
     {
-        CurrentTurnMessage = "Turno del Jefe...";
+        CurrentTurnMessage = "Turno de Garmanar...";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
-        
         await Task.Delay(1500);
 
         int enemyDamage = 15;
-        CurrentTurnMessage = $"¡El Jefe te ataca y quita {enemyDamage}!";
+        CurrentTurnMessage = $"¡Garmanar te ataca y quita {enemyDamage}!";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
-        // 3. AHORA SÍ: El jefe le baja la vida real a Aman
         _playerVM.TakeDamage(enemyDamage);
         
         await Task.Delay(1500);
@@ -96,11 +86,7 @@ public class CombatViewModel
 
     private void EndCombat(bool playerWon)
     {
-        if (playerWon)
-            CurrentTurnMessage = "¡VICTORIA! Portal desbloqueado.";
-        else
-            CurrentTurnMessage = "Has sido derrotado...";
-        
+        CurrentTurnMessage = playerWon ? "¡VICTORIA! Portal desbloqueado." : "Has sido derrotado...";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         OnCombatEnded?.Invoke();
     }
