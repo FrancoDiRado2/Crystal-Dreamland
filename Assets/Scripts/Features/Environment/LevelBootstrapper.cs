@@ -10,6 +10,7 @@ public class LevelBootstrapper : MonoBehaviour
     [Header("Referencia Global")]
     public PlayerViewModel playerViewModel; // NUEVO: Arrastrá a Aman acá
     public CombatManagerView combatManagerView;
+    public CombatCanvasView combatCanvasView;
     private LevelModel _levelModel;
     private LevelViewModel _levelViewModel;
     
@@ -36,5 +37,9 @@ public class LevelBootstrapper : MonoBehaviour
         // Inyectamos al enemigo pasándole su propia lógica Y la del jugador
         if (enemyView != null) enemyView.Initialize(_enemyViewModel, playerViewModel);
         if (combatManagerView != null) combatManagerView.Initialize(_enemyViewModel);
+        // Creamos la lógica de turnos
+        CombatViewModel combatViewModel = new CombatViewModel(_enemyViewModel, playerViewModel);
+        // Se la inyectamos a tu nuevo Canvas
+        if (combatCanvasView != null) combatCanvasView.Initialize(combatViewModel, playerViewModel);
     }
 }
