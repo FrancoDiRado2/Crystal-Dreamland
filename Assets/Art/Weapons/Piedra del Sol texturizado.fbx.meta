@@ -3,7 +3,22 @@ guid: 5d90adea5535a254186baec4b930a53a
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cadena
+    second: {fileID: 2100000, guid: da9fc87adc891cc45a100b0b8f4f4313, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: "Medall\xF3n"
+    second: {fileID: 2100000, guid: f23e68de1a7860149bb3dfcd009aa8b2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Piedra
+    second: {fileID: 2100000, guid: d8e16ea9ea98d4b4a8b31f34edf1bbe1, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
