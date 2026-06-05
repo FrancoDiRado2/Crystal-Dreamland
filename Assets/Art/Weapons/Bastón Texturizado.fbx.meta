@@ -3,7 +3,22 @@ guid: 380e495cf4ba5134c81a278f01975625
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cristal
+    second: {fileID: 2100000, guid: d91fb75c75024b1429cd1091edcc97c2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Mango
+    second: {fileID: 2100000, guid: e5eaf307174f10443b9dae421472afcc, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Metal Negro
+    second: {fileID: 2100000, guid: 4038702144b556b4db1fc909a4351c55, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
