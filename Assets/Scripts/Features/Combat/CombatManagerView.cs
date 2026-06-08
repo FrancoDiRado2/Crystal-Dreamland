@@ -9,7 +9,10 @@ public class CombatManagerView : MonoBehaviour
     public GameObject mainCamera; 
     public GameObject mainHUD;    
     public PlayerView playerView; 
-    public Transform playerCombatSpot; // La marca donde aparece Aman
+    public Transform playerCombatSpot; 
+    
+    // NUEVO: Referencia directa al Animator de Aman para destrabarla
+    public Animator playerAnimator; 
 
     [Header("Combate (Lo que se prende)")]
     public GameObject combatCamera; 
@@ -46,6 +49,12 @@ public class CombatManagerView : MonoBehaviour
             {
                 playerView.TeleportTo(playerCombatSpot);
             }
+            
+            // Nos aseguramos de decirle al animator que Aman no está caminando
+            if (playerAnimator != null)
+            {
+                playerAnimator.SetFloat("Speed", 0f);
+            }
         }
         
         if (mainHUD != null) mainHUD.SetActive(false);
@@ -60,30 +69,35 @@ public class CombatManagerView : MonoBehaviour
 
     private async void EndCombatTransition(bool playerWon)
     {
-        // Espera 3 segundos para que el usuario vea el resultado
         await Task.Delay(3000); 
 
         if (combatCanvas != null) combatCanvas.SetActive(false);
 
         if (playerWon)
         {
-            // Volver a la exploración
             if (combatCamera != null) combatCamera.SetActive(false);
             if (mainCamera != null) mainCamera.SetActive(true);
             if (mainHUD != null) mainHUD.SetActive(true);
 
-            if (playerView != null) playerView.enabled = true; 
+            if (playerView != null) 
+            {
+                playerView.enabled = true; 
+                
+                // NUEVO: Destrabamos la T-pose forzando el Float a 0 y reproduciendo el estado por defecto
+                if (playerAnimator != null)
+                {
+                    playerAnimator.SetFloat("Speed", 0f);
+                    playerAnimator.Play("Idle"); // Asegurate de que el estado en tu Animator se llame "Idle" o cambialo acá
+                }
+            }
 
-            // Efectos de Victoria
             if (garmanarModel != null) garmanarModel.SetActive(false);
             if (muroInvisible != null) muroInvisible.SetActive(true);
 
-            // Actualización de textos
             if (portalStatusText != null) portalStatusText.text = "¡Cross the Door!";
             if (powerStatusText != null) powerStatusText.text = "Free Way";
             if (objectiveText != null) objectiveText.SetActive(false);
 
-            // Limpieza del texto del combate
             if (_combatViewModel != null) _combatViewModel.ClearTurnMessage(); 
 
             Cursor.lockState = CursorLockMode.Locked;
@@ -91,7 +105,6 @@ public class CombatManagerView : MonoBehaviour
         }
         else
         {
-            // Mostrar Game Over
             if (gameOverCanvas != null) gameOverCanvas.SetActive(true);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
