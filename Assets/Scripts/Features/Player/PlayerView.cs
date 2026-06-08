@@ -119,4 +119,23 @@ public class PlayerView : MonoBehaviour
             _animator.SetFloat("Speed", 0f);
         }
     }
+    // NUEVO: Función para teletransportar a Aman a la marca de combate
+    public void TeleportTo(Transform targetTransform)
+    {
+        if (_controller != null) _controller.enabled = false;
+        
+        transform.position = targetTransform.position;
+        transform.rotation = targetTransform.rotation;
+        
+        if (_controller != null) _controller.enabled = true;
+    }
+    
+    // --- FUNCIONES DE COMBATE ---
+    public void PlayAttackAnimation()
+    {
+        if (_animator != null) 
+        {
+            _animator.SetTrigger("Attack");
+        }
+    }
 }

@@ -133,4 +133,11 @@ public class CombatViewModel
         // NUEVO: Disparamos el evento pasándole la variable
         OnCombatEnded?.Invoke(playerWon);
     }
+    
+    // Agregá esto al final de tu CombatViewModel.cs, antes de la última llave
+    public void ClearTurnMessage()
+    {
+        CurrentTurnMessage = "";
+        OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
+    }
 }
