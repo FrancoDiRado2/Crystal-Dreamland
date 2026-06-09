@@ -22,6 +22,9 @@ public class PlayerView : MonoBehaviour
     public void Initialize(PlayerViewModel viewModel)
     {
         _viewModel = viewModel;
+
+        // NUEVO: Suscribimos la Vista al evento de dolor del ViewModel
+        _viewModel.OnTakeDamageFlinch += PlayFlinchAnimation;
     }
 
     private void Awake()
@@ -119,7 +122,8 @@ public class PlayerView : MonoBehaviour
             _animator.SetFloat("Speed", 0f);
         }
     }
-    // NUEVO: Función para teletransportar a Aman a la marca de combate
+
+    // Función para teletransportar a Aman a la marca de combate
     public void TeleportTo(Transform targetTransform)
     {
         if (_controller != null) _controller.enabled = false;
@@ -136,6 +140,25 @@ public class PlayerView : MonoBehaviour
         if (_animator != null) 
         {
             _animator.SetTrigger("Attack");
+        }
+    }
+
+    // NUEVO: La función que dispara la animación de recibir daño
+    private void PlayFlinchAnimation()
+    {
+        if (_animator != null) 
+        {
+            // OJO: Asegurate de que el Trigger en el Animator de Aman se llame exactamente "TakeDamage"
+            _animator.SetTrigger("Flinch");
+        }
+    }
+
+    private void OnDestroy()
+    {
+        // La desuscripción TIENE que ir acá, solo cuando se destruye el objeto
+        if (_viewModel != null)
+        {
+            _viewModel.OnTakeDamageFlinch -= PlayFlinchAnimation;
         }
     }
 }

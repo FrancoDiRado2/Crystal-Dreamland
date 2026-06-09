@@ -7,6 +7,9 @@ public class PlayerViewModel
 
     public event Action<int> OnPowerChanged; 
     public event Action<int> OnHealthChanged;
+    
+    // NUEVO: Evento para avisarle a la vista que grite de dolor
+    public event Action OnTakeDamageFlinch;
 
     public float WalkSpeed => data.walkSpeed;
     public float SprintSpeed => data.sprintSpeed;
@@ -49,6 +52,9 @@ public class PlayerViewModel
         if (data.currentHealth < 0) data.currentHealth = 0;
         
         OnHealthChanged?.Invoke(data.currentHealth);
+
+        // NUEVO: Le avisamos a la Vista que ponga la animación de recibir daño
+        OnTakeDamageFlinch?.Invoke();
     }
 
     // NUEVO: Sumar vida sin pasarse de la vida máxima

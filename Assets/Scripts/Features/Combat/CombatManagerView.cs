@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 using TMPro; 
+using UnityEngine.Video; // LIBRERÍA NECESARIA PARA LOS VIDEOS
 
 public class CombatManagerView : MonoBehaviour
 {
@@ -10,13 +11,16 @@ public class CombatManagerView : MonoBehaviour
     public GameObject mainHUD;    
     public PlayerView playerView; 
     public Transform playerCombatSpot; 
-    
-    // NUEVO: Referencia directa al Animator de Aman para destrabarla
     public Animator playerAnimator; 
 
     [Header("Combate (Lo que se prende)")]
     public GameObject combatCamera; 
     public GameObject combatCanvas; 
+
+    [Header("Cinemáticas de Video")]
+    public GameObject videoScreen; // El RawImage que va a tapar la pantalla
+    public VideoPlayer introVideo; // Reproductor del video de entrada
+    public VideoPlayer outroVideo; // Reproductor del video de victoria
 
     [Header("Game Over / Victoria (Detalles finales)")]
     public GameObject gameOverCanvas; 
@@ -40,8 +44,10 @@ public class CombatManagerView : MonoBehaviour
         _combatViewModel.OnCombatEnded += EndCombatTransition; 
     }
 
-    private void StartCombatTransition()
+    // Cambiado a async void para poder esperar al video
+    private async void StartCombatTransition()
     {
+        // 1. Apagamos controles del jugador para que no se mueva en el fondo
         if (playerView != null) 
         {
             playerView.enabled = false; 
@@ -50,7 +56,6 @@ public class CombatManagerView : MonoBehaviour
                 playerView.TeleportTo(playerCombatSpot);
             }
             
-            // Nos aseguramos de decirle al animator que Aman no está caminando
             if (playerAnimator != null)
             {
                 playerAnimator.SetFloat("Speed", 0f);
@@ -60,6 +65,20 @@ public class CombatManagerView : MonoBehaviour
         if (mainHUD != null) mainHUD.SetActive(false);
         if (mainCamera != null) mainCamera.SetActive(false);
 
+        // 2. PRENDEMOS EL VIDEO DE INTRO
+        if (videoScreen != null && introVideo != null)
+        {
+            videoScreen.SetActive(true);
+            introVideo.Play();
+
+            // Esperamos los milisegundos exactos que dure el video
+            int videoDurationMs = (int)(introVideo.clip.length * 1000);
+            await Task.Delay(videoDurationMs);
+
+            videoScreen.SetActive(false); // Apagamos el telón
+        }
+
+        // 3. Empieza el combate
         if (combatCamera != null) combatCamera.SetActive(true);
         if (combatCanvas != null) combatCanvas.SetActive(true);
 
@@ -69,12 +88,26 @@ public class CombatManagerView : MonoBehaviour
 
     private async void EndCombatTransition(bool playerWon)
     {
+        // Pausa original para ver el cartel de Victoria/Derrota
         await Task.Delay(3000); 
 
         if (combatCanvas != null) combatCanvas.SetActive(false);
 
         if (playerWon)
         {
+            // PRENDEMOS EL VIDEO DE VICTORIA
+            if (videoScreen != null && outroVideo != null)
+            {
+                videoScreen.SetActive(true);
+                outroVideo.Play();
+
+                int outroDurationMs = (int)(outroVideo.clip.length * 1000);
+                await Task.Delay(outroDurationMs);
+
+                videoScreen.SetActive(false);
+            }
+
+            // Devolvemos al jugador a la normalidad
             if (combatCamera != null) combatCamera.SetActive(false);
             if (mainCamera != null) mainCamera.SetActive(true);
             if (mainHUD != null) mainHUD.SetActive(true);
@@ -83,11 +116,10 @@ public class CombatManagerView : MonoBehaviour
             {
                 playerView.enabled = true; 
                 
-                // NUEVO: Destrabamos la T-pose forzando el Float a 0 y reproduciendo el estado por defecto
                 if (playerAnimator != null)
                 {
                     playerAnimator.SetFloat("Speed", 0f);
-                    playerAnimator.Play("Idle"); // Asegurate de que el estado en tu Animator se llame "Idle" o cambialo acá
+                    playerAnimator.Play("Idle"); 
                 }
             }
 

@@ -58,7 +58,6 @@ public class CombatViewModel
         await Task.Delay(800); 
 
         // 3. ¡Impacto! Le bajamos la vida a Garmanar. 
-        // Como su EnemyView lo escucha, él dispara el "Flinch" automáticamente acá.
         _enemyVM.TakeDamage(finalDamage);
 
         // 4. Esperamos a que termine de quejarse
@@ -120,7 +119,7 @@ public class CombatViewModel
         // 2. Esperamos 1 segundo a que su arma nos alcance
         await Task.Delay(1000);
 
-        // 3. ¡Impacto a Aman! Esto baja su vida matemática, lo que dispara su Flinch automático
+        // 3. ¡Impacto a Aman! Dispara el Flinch automáticamente en PlayerView
         _playerVM.TakeDamage(enemyDamage);
         
         // 4. Esperamos a que Aman termine de retroceder por el golpe
