@@ -10,6 +10,7 @@ public class EnemyViewModel
     public event Action OnDefeated;
     public event Action OnNotEnoughPower; 
     public event Action OnCombatStarted; 
+    public event Action OnAttackAnim; // NUEVO: Avisa que el jefe debe animar su ataque
 
     public bool IsDefeated => _model.currentHealth <= 0;
 
@@ -19,34 +20,23 @@ public class EnemyViewModel
         _model.currentHealth = _model.maxHealth;
     }
 
-    // --- MÉTODOS PARA COMUNICARSE CON LA VISTA ---
-
-    // ¡ACÁ ESTÁ EL MÉTODO QUE FALTABA!
-    // Evalúa si Aman tiene el poder necesario y dispara el evento correspondiente
     public void TryStartCombat(int playerPower)
     {
-        if (playerPower >= 25)
-        {
-            OnCombatStarted?.Invoke();
-        }
-        else
-        {
-            OnNotEnoughPower?.Invoke();
-        }
+        if (playerPower >= 25) OnCombatStarted?.Invoke();
+        else OnNotEnoughPower?.Invoke();
     }
 
-    public void NotifyNotEnoughPower()
-    {
-        OnNotEnoughPower?.Invoke();
-    }
+    public void NotifyNotEnoughPower() => OnNotEnoughPower?.Invoke();
+    
+    public void StartCombat() => OnCombatStarted?.Invoke();
 
-    public void StartCombat()
+    // NUEVO: El árbitro llama a esto para que Garmanar tire el golpe visual
+    public void TriggerAttackAnimation()
     {
-        OnCombatStarted?.Invoke();
+        OnAttackAnim?.Invoke();
     }
 
     // --- LÓGICA DE DAÑO ---
-
     public void TakeDamage(int damage)
     {
         if (IsDefeated) return;
@@ -56,10 +46,7 @@ public class EnemyViewModel
 
         OnHealthChanged?.Invoke(_model.currentHealth);
 
-        if (_model.currentHealth == 0)
-        {
-            OnDefeated?.Invoke();
-        }
+        if (_model.currentHealth == 0) OnDefeated?.Invoke();
     }
 
     public (int damage, bool isCritical) GetAttackDamage()
@@ -67,10 +54,7 @@ public class EnemyViewModel
         int finalDamage = _model.baseDamage;
         bool isCritical = UnityEngine.Random.Range(0, 100) < _model.criticalChance;
 
-        if (isCritical)
-        {
-            finalDamage += _model.criticalBonus;
-        }
+        if (isCritical) finalDamage += _model.criticalBonus;
 
         return (finalDamage, isCritical); 
     }
