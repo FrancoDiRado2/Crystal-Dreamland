@@ -11,7 +11,6 @@ public class CombatViewModel
     public string CurrentTurnMessage { get; private set; }
 
     public event Action<string> OnTurnMessageChanged;
-    // NUEVO: Ahora el evento envía un bool para avisar si fue victoria (true) o derrota (false)
     public event Action<bool> OnCombatEnded;
 
     public CombatViewModel(EnemyViewModel enemyVM, PlayerViewModel playerVM)
@@ -19,6 +18,12 @@ public class CombatViewModel
         _enemyVM = enemyVM;
         _playerVM = playerVM;
         StartPlayerTurn();
+    }
+
+    public void ClearTurnMessage()
+    {
+        CurrentTurnMessage = "";
+        OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
     }
 
     private void StartPlayerTurn()
@@ -45,21 +50,24 @@ public class CombatViewModel
         {
             CurrentTurnMessage = $"¡Atacás con {finalDamage} de daño!";
         }
-
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
+        // 1. En este momento exacto, el botón UI ya hizo que Aman empiece su animación
+        
+        // 2. Esperamos 0.8 segundos (o 1s) para que la espada viaje y "conecte" visualmente
+        await Task.Delay(800); 
+
+        // 3. ¡Impacto! Le bajamos la vida a Garmanar. 
+        // Como su EnemyView lo escucha, él dispara el "Flinch" automáticamente acá.
         _enemyVM.TakeDamage(finalDamage);
 
-        await Task.Delay(2000); 
+        // 4. Esperamos a que termine de quejarse
+        await Task.Delay(1500); 
 
         if (_enemyVM.IsDefeated)
-        {
             EndCombat(true);
-        }
         else
-        {
             StartEnemyTurn();
-        }
     }
 
     public async void PlayerHeal()
@@ -90,7 +98,7 @@ public class CombatViewModel
         CurrentTurnMessage = "Turno de Garmanar...";
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
         
-        await Task.Delay(1500);
+        await Task.Delay(1000); // Pequeña pausa para que se lea el cartel
 
         int enemyDamage = 30;
         bool isEnemyCritical = UnityEngine.Random.Range(0, 100) < 30;
@@ -104,21 +112,24 @@ public class CombatViewModel
         {
             CurrentTurnMessage = $"¡Garmanar te ataca y quita {enemyDamage} de vida!";
         }
-        
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
+
+        // 1. Le decimos a Garmanar que tire su animación de ataque
+        _enemyVM.TriggerAttackAnimation();
         
+        // 2. Esperamos 1 segundo a que su arma nos alcance
+        await Task.Delay(1000);
+
+        // 3. ¡Impacto a Aman! Esto baja su vida matemática, lo que dispara su Flinch automático
         _playerVM.TakeDamage(enemyDamage);
         
+        // 4. Esperamos a que Aman termine de retroceder por el golpe
         await Task.Delay(1500);
 
         if (_playerVM.IsDefeated)
-        {
             EndCombat(false); 
-        }
         else
-        {
             StartPlayerTurn();
-        }
     }
 
     private void EndCombat(bool playerWon)
@@ -129,15 +140,6 @@ public class CombatViewModel
             CurrentTurnMessage = "Has sido derrotado..."; 
         
         OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
-        
-        // NUEVO: Disparamos el evento pasándole la variable
         OnCombatEnded?.Invoke(playerWon);
-    }
-    
-    // Agregá esto al final de tu CombatViewModel.cs, antes de la última llave
-    public void ClearTurnMessage()
-    {
-        CurrentTurnMessage = "";
-        OnTurnMessageChanged?.Invoke(CurrentTurnMessage);
     }
 }

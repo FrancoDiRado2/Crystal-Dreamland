@@ -8,7 +8,8 @@ public class EnemyView : MonoBehaviour
     private EnemyViewModel _viewModel;
     private PlayerViewModel _playerViewModel; 
 
-    // Se inyecta desde el Bootstrapper
+    private int _lastHealth = 100;
+
     public void Initialize(EnemyViewModel viewModel, PlayerViewModel playerViewModel)
     {
         _viewModel = viewModel;
@@ -17,33 +18,60 @@ public class EnemyView : MonoBehaviour
         _viewModel.OnDefeated += HandleDefeated;
         _viewModel.OnCombatStarted += HandleCombatStart;
         _viewModel.OnNotEnoughPower += HandleNotEnoughPower;
+        
+        // Escuchamos animaciones
+        _viewModel.OnHealthChanged += HandleHealthChanged;
+        _viewModel.OnAttackAnim += PlayAttackAnimation;
+
+        _lastHealth = 100; 
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            // Leemos el poder de Aman en tiempo real
             int currentPower = _playerViewModel.GetCurrentPower(); 
             _viewModel.TryStartCombat(currentPower);
         }
     }
 
-    private void HandleCombatStart()
+    private void HandleCombatStart() { Debug.Log("¡CÁMARA DE COMBATE!"); }
+    private void HandleNotEnoughPower() { Debug.Log("Faltan cristales"); }
+
+    // Lógica de Flinch para Garmanar
+    private void HandleHealthChanged(int newHealth)
     {
-        Debug.Log("¡CÁMARA DE COMBATE: INICIA EL DUELO!");
-        // En el próximo paso acá frenaremos el movimiento de Aman y cambiaremos la cámara.
+        if (animator == null) 
+        {
+            Debug.LogWarning("¡Atención! Garmanar recibió daño pero su casillero 'Animator' está vacío en el Inspector.");
+            return;
+        }
+
+        if (newHealth < _lastHealth)
+        {
+            Debug.Log("¡Garmanar recibió daño! Ejecutando Flinch..."); 
+            animator.SetTrigger("Flinch");
+        }
+        _lastHealth = newHealth;
     }
 
-    private void HandleNotEnoughPower()
+    // Lógica de Ataque para Garmanar
+    private void PlayAttackAnimation()
     {
-        Debug.Log("¡Te faltan cristales para pelear con este jefe!");
+        if (animator == null)
+        {
+            Debug.LogWarning("¡Atención! El árbitro mandó a atacar pero el casillero 'Animator' de Garmanar está vacío.");
+            return;
+        }
+
+        Debug.Log("¡El árbitro le dijo a Garmanar que ataque!"); 
+        animator.SetTrigger("Attack");
     }
 
     private void HandleDefeated()
     {
-        if (animator != null) //animator.SetTrigger("Die");
-        GetComponent<Collider>().enabled = false; // Apagamos el trigger para que no moleste más
+        if (animator != null) animator.SetTrigger("Flinch"); 
+        GetComponent<Collider>().enabled = false; 
     }
 
     private void OnDestroy()
@@ -53,6 +81,8 @@ public class EnemyView : MonoBehaviour
             _viewModel.OnDefeated -= HandleDefeated;
             _viewModel.OnCombatStarted -= HandleCombatStart;
             _viewModel.OnNotEnoughPower -= HandleNotEnoughPower;
+            _viewModel.OnHealthChanged -= HandleHealthChanged;
+            _viewModel.OnAttackAnim -= PlayAttackAnimation;
         }
     }
 }
