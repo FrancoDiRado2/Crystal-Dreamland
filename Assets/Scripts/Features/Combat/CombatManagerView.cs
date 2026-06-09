@@ -1,29 +1,32 @@
 using UnityEngine;
+using UnityEngine.UI; 
 using UnityEngine.SceneManagement;
-using System.Threading.Tasks;
+using System.Collections; // ¡Librería clave para las Corrutinas!
 using TMPro; 
 
 public class CombatManagerView : MonoBehaviour
 {
-    [Header("Exploración (Lo que se apaga)")]
+    [Header("Exploración")]
     public GameObject mainCamera; 
     public GameObject mainHUD;    
     public PlayerView playerView; 
     public Transform playerCombatSpot; 
-    
-    // NUEVO: Referencia directa al Animator de Aman para destrabarla
     public Animator playerAnimator; 
 
-    [Header("Combate (Lo que se prende)")]
+    [Header("Combate")]
     public GameObject combatCamera; 
     public GameObject combatCanvas; 
 
-    [Header("Game Over / Victoria (Detalles finales)")]
+    [Header("Transición Estilo Pokémon")]
+    public RawImage transitionScreen; 
+    public Material swirlMaterial;    
+
+    [Header("Game Over / Victoria")]
     public GameObject gameOverCanvas; 
     public GameObject garmanarModel; 
     public GameObject muroInvisible; 
     
-    [Header("Textos del HUD")]
+    [Header("Textos")]
     public TextMeshProUGUI portalStatusText; 
     public TextMeshProUGUI powerStatusText; 
     public GameObject objectiveText;
@@ -40,36 +43,104 @@ public class CombatManagerView : MonoBehaviour
         _combatViewModel.OnCombatEnded += EndCombatTransition; 
     }
 
+    // El evento dispara esto, y esto arranca la secuencia animada
     private void StartCombatTransition()
     {
+        StartCoroutine(StartCombatRoutine());
+    }
+
+    // CORRUTINA: Maneja la animación cuadro por cuadro sin fallar
+    // CORRUTINA: Maneja la animación cuadro por cuadro sin fallar
+    // CORRUTINA: Maneja la animación cuadro por cuadro sin fallar
+    private IEnumerator StartCombatRoutine()
+    {
+        // ¡MAGIA!: Congelamos todo el universo (físicas, cámaras, gravedad)
+        Time.timeScale = 0f;
+
+        // 1. Apagamos controles y HUD
         if (playerView != null) 
         {
             playerView.enabled = false; 
-            if (playerCombatSpot != null)
-            {
-                playerView.TeleportTo(playerCombatSpot);
-            }
-            
-            // Nos aseguramos de decirle al animator que Aman no está caminando
-            if (playerAnimator != null)
-            {
-                playerAnimator.SetFloat("Speed", 0f);
-            }
+            if (playerCombatSpot != null) playerView.TeleportTo(playerCombatSpot);
+            if (playerAnimator != null) playerAnimator.SetFloat("Speed", 0f);
         }
-        
         if (mainHUD != null) mainHUD.SetActive(false);
-        if (mainCamera != null) mainCamera.SetActive(false);
 
+        // 2. SACAMOS FOTO
+        RenderTexture snapshot = new RenderTexture(Screen.width, Screen.height, 24);
+        Camera activeCam = Camera.main; 
+        if (activeCam != null)
+        {
+            activeCam.targetTexture = snapshot;
+            activeCam.Render();
+            activeCam.targetTexture = null;
+        }
+
+        // 3. ENCHUFAMOS TODO AL MATERIAL ORIGINAL
+        transitionScreen.texture = snapshot;
+        transitionScreen.material = swirlMaterial; 
+        transitionScreen.gameObject.SetActive(true);
+
+        float elapsed = 0f;
+        float duration = 1.2f;
+        
+        // 4. ENROSCAMOS
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime; // Esto ignora la pausa del TimeScale
+            float str = Mathf.Lerp(0f, 15f, elapsed / duration);
+            
+            swirlMaterial.SetFloat("_SwirlStrength", str);
+            yield return null; 
+        }
+        swirlMaterial.SetFloat("_SwirlStrength", 15f);
+
+        // 5. Cambio de cámaras (Por detrás de la espiral)
+        if (mainCamera != null) mainCamera.SetActive(false); 
         if (combatCamera != null) combatCamera.SetActive(true);
-        if (combatCanvas != null) combatCanvas.SetActive(true);
 
+        // 6. SACAMOS FOTO DE COMBATE
+        Camera cCam = combatCamera.GetComponent<Camera>();
+        if (cCam != null)
+        {
+            cCam.targetTexture = snapshot;
+            cCam.Render();
+            cCam.targetTexture = null;
+        }
+        transitionScreen.texture = snapshot;
+
+        // 7. DESENROSCAMOS
+        elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float str = Mathf.Lerp(15f, 0f, elapsed / duration);
+            
+            swirlMaterial.SetFloat("_SwirlStrength", str);
+            yield return null;
+        }
+        swirlMaterial.SetFloat("_SwirlStrength", 0f);
+
+        // 8. Limpieza
+        transitionScreen.gameObject.SetActive(false);
+        snapshot.Release();
+        
+        if (combatCanvas != null) combatCanvas.SetActive(true);
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+
+        // ¡MAGIA!: Descongelamos el mundo para que empiece la pelea
+        Time.timeScale = 1f;
     }
 
-    private async void EndCombatTransition(bool playerWon)
+    private void EndCombatTransition(bool playerWon)
     {
-        await Task.Delay(3000); 
+        StartCoroutine(EndCombatRoutine(playerWon));
+    }
+
+    private IEnumerator EndCombatRoutine(bool playerWon)
+    {
+        yield return new WaitForSeconds(3f); // Pausa para ver la victoria/derrota
 
         if (combatCanvas != null) combatCanvas.SetActive(false);
 
@@ -82,22 +153,18 @@ public class CombatManagerView : MonoBehaviour
             if (playerView != null) 
             {
                 playerView.enabled = true; 
-                
-                // NUEVO: Destrabamos la T-pose forzando el Float a 0 y reproduciendo el estado por defecto
                 if (playerAnimator != null)
                 {
                     playerAnimator.SetFloat("Speed", 0f);
-                    playerAnimator.Play("Idle"); // Asegurate de que el estado en tu Animator se llame "Idle" o cambialo acá
+                    playerAnimator.Play("Idle"); 
                 }
             }
 
             if (garmanarModel != null) garmanarModel.SetActive(false);
             if (muroInvisible != null) muroInvisible.SetActive(true);
-
             if (portalStatusText != null) portalStatusText.text = "¡Cross the Door!";
             if (powerStatusText != null) powerStatusText.text = "Free Way";
             if (objectiveText != null) objectiveText.SetActive(false);
-
             if (_combatViewModel != null) _combatViewModel.ClearTurnMessage(); 
 
             Cursor.lockState = CursorLockMode.Locked;
