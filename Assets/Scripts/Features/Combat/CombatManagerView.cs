@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI; 
 using UnityEngine.SceneManagement;
-using System.Collections; // ¡Librería clave para las Corrutinas!
+using System.Collections; //Librería de Corrutinas
 using TMPro; 
 
 public class CombatManagerView : MonoBehaviour
@@ -20,6 +20,9 @@ public class CombatManagerView : MonoBehaviour
     [Header("Transición Estilo Pokémon")]
     public RawImage transitionScreen; 
     public Material swirlMaterial;    
+
+    [Header("UI Victoria Combate")]
+    public GameObject victoryPanel; // <-- ¡NUEVO!: Arrastrá acá tu cartel de VICTORY
 
     [Header("Game Over / Victoria")]
     public GameObject gameOverCanvas; 
@@ -43,21 +46,18 @@ public class CombatManagerView : MonoBehaviour
         _combatViewModel.OnCombatEnded += EndCombatTransition; 
     }
 
-    // El evento dispara esto, y esto arranca la secuencia animada
     private void StartCombatTransition()
     {
         StartCoroutine(StartCombatRoutine());
     }
 
-    // CORRUTINA: Maneja la animación cuadro por cuadro sin fallar
-    // CORRUTINA: Maneja la animación cuadro por cuadro sin fallar
-    // CORRUTINA: Maneja la animación cuadro por cuadro sin fallar
     private IEnumerator StartCombatRoutine()
     {
-        // ¡MAGIA!: Congelamos todo el universo (físicas, cámaras, gravedad)
+        // Nos aseguramos de que el panel de transición reciba clics/capturas al inicio
+        if (transitionScreen != null) transitionScreen.raycastTarget = true;
+
         Time.timeScale = 0f;
 
-        // 1. Apagamos controles y HUD
         if (playerView != null) 
         {
             playerView.enabled = false; 
@@ -66,7 +66,6 @@ public class CombatManagerView : MonoBehaviour
         }
         if (mainHUD != null) mainHUD.SetActive(false);
 
-        // 2. SACAMOS FOTO
         RenderTexture snapshot = new RenderTexture(Screen.width, Screen.height, 24);
         Camera activeCam = Camera.main; 
         if (activeCam != null)
@@ -76,7 +75,6 @@ public class CombatManagerView : MonoBehaviour
             activeCam.targetTexture = null;
         }
 
-        // 3. ENCHUFAMOS TODO AL MATERIAL ORIGINAL
         transitionScreen.texture = snapshot;
         transitionScreen.material = swirlMaterial; 
         transitionScreen.gameObject.SetActive(true);
@@ -84,22 +82,18 @@ public class CombatManagerView : MonoBehaviour
         float elapsed = 0f;
         float duration = 1.2f;
         
-        // 4. ENROSCAMOS
         while (elapsed < duration)
         {
-            elapsed += Time.unscaledDeltaTime; // Esto ignora la pausa del TimeScale
+            elapsed += Time.unscaledDeltaTime; 
             float str = Mathf.Lerp(0f, 15f, elapsed / duration);
-            
             swirlMaterial.SetFloat("_SwirlStrength", str);
             yield return null; 
         }
         swirlMaterial.SetFloat("_SwirlStrength", 15f);
 
-        // 5. Cambio de cámaras (Por detrás de la espiral)
         if (mainCamera != null) mainCamera.SetActive(false); 
         if (combatCamera != null) combatCamera.SetActive(true);
 
-        // 6. SACAMOS FOTO DE COMBATE
         Camera cCam = combatCamera.GetComponent<Camera>();
         if (cCam != null)
         {
@@ -109,19 +103,16 @@ public class CombatManagerView : MonoBehaviour
         }
         transitionScreen.texture = snapshot;
 
-        // 7. DESENROSCAMOS
         elapsed = 0f;
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
             float str = Mathf.Lerp(15f, 0f, elapsed / duration);
-            
             swirlMaterial.SetFloat("_SwirlStrength", str);
             yield return null;
         }
         swirlMaterial.SetFloat("_SwirlStrength", 0f);
 
-        // 8. Limpieza
         transitionScreen.gameObject.SetActive(false);
         snapshot.Release();
         
@@ -129,7 +120,6 @@ public class CombatManagerView : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // ¡MAGIA!: Descongelamos el mundo para que empiece la pelea
         Time.timeScale = 1f;
     }
 
@@ -138,14 +128,51 @@ public class CombatManagerView : MonoBehaviour
         StartCoroutine(EndCombatRoutine(playerWon));
     }
 
-    private IEnumerator EndCombatRoutine(bool playerWon)
+        private IEnumerator EndCombatRoutine(bool playerWon)
     {
-        yield return new WaitForSeconds(3f); // Pausa para ver la victoria/derrota
-
+        // 1. Apagamos la interfaz de combate vieja (botones de ataque)
         if (combatCanvas != null) combatCanvas.SetActive(false);
 
         if (playerWon)
         {
+            // === SECUENCIA DE VICTORIA ===
+            Time.timeScale = 0.2f; // Cámara lenta épica para el impacto final
+
+            // 2. ¡Prendemos el cartel! Al estar en el TransitionCanvas, no se apaga.
+            if (victoryPanel != null) victoryPanel.SetActive(true);
+
+            if (garmanarModel != null)
+            {
+                float t = 0f;
+                Vector3 escalaOriginal = garmanarModel.transform.localScale;
+                Vector3 posicionOriginal = garmanarModel.transform.position;
+                
+                while (t < 1.5f)
+                {
+                    t += Time.unscaledDeltaTime; // Progreso en tiempo real
+                    float progress = t / 1.5f;
+                    
+                    // Efecto Pokémon: Aplastar e hundir hacia el piso
+                    garmanarModel.transform.localScale = Vector3.Lerp(escalaOriginal, new Vector3(escalaOriginal.x, 0f, escalaOriginal.z), progress);
+                    garmanarModel.transform.position = posicionOriginal + (Vector3.down * (progress * 1.5f));
+                    
+                    // Titileo
+                    garmanarModel.SetActive(!garmanarModel.activeSelf);
+                    
+                    yield return null;
+                }
+                garmanarModel.SetActive(false); 
+            }
+
+            // 3. ¡CORRECCIÓN CLAVE!: Esperamos 1.5 segundos reales para que el jugador lea el cartel
+            // sin importar que el mundo 3D vaya a cámara lenta.
+            yield return new WaitForSecondsRealtime(1.5f);
+            
+            if (victoryPanel != null) victoryPanel.SetActive(false);
+
+            Time.timeScale = 1f; // Volvemos el tiempo a la normalidad
+
+            // 4. Encendemos cámaras y HUD de exploración del mapa
             if (combatCamera != null) combatCamera.SetActive(false);
             if (mainCamera != null) mainCamera.SetActive(true);
             if (mainHUD != null) mainHUD.SetActive(true);
@@ -160,7 +187,6 @@ public class CombatManagerView : MonoBehaviour
                 }
             }
 
-            if (garmanarModel != null) garmanarModel.SetActive(false);
             if (muroInvisible != null) muroInvisible.SetActive(true);
             if (portalStatusText != null) portalStatusText.text = "¡Cross the Door!";
             if (powerStatusText != null) powerStatusText.text = "Free Way";
@@ -172,7 +198,30 @@ public class CombatManagerView : MonoBehaviour
         }
         else
         {
+            // === SECUENCIA DE DERROTA ===
+            if (transitionScreen != null)
+            {
+                transitionScreen.material = null; 
+                transitionScreen.texture = null;
+                transitionScreen.color = new Color(0.4f, 0f, 0f, 0f); 
+                transitionScreen.gameObject.SetActive(true);
+
+                float t = 0f;
+                while (t < 2f) 
+                {
+                    t += Time.unscaledDeltaTime;
+                    float alpha = Mathf.Lerp(0f, 0.85f, t / 2f); 
+                    transitionScreen.color = new Color(0.4f, 0f, 0f, alpha);
+                    Time.timeScale = Mathf.Lerp(1f, 0f, t / 2f); 
+                    yield return null;
+                }
+
+                transitionScreen.raycastTarget = false;
+            }
+
+            Time.timeScale = 0f;
             if (gameOverCanvas != null) gameOverCanvas.SetActive(true);
+            
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
