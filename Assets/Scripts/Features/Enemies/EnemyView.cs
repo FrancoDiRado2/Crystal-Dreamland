@@ -5,6 +5,11 @@ public class EnemyView : MonoBehaviour
     [Header("Referencias Opcionales")]
     public Animator animator;
 
+    [Header("Sonidos de Garmanar")]
+    public AudioSource audioSource;
+    public AudioClip attackSound;
+    public AudioClip hitSound; // 🎵 Agregado para cuando recibe daño
+
     private EnemyViewModel _viewModel;
     private PlayerViewModel _playerViewModel; 
 
@@ -35,22 +40,19 @@ public class EnemyView : MonoBehaviour
         }
     }
 
-    private void HandleCombatStart() { Debug.Log("¡CÁMARA DE COMBATE!"); }
-    private void HandleNotEnoughPower() { Debug.Log("Faltan cristales"); }
+    private void HandleCombatStart() { }
+    private void HandleNotEnoughPower() { }
 
     // Lógica de Flinch para Garmanar
     private void HandleHealthChanged(int newHealth)
     {
-        if (animator == null) 
-        {
-            Debug.LogWarning("¡Atención! Garmanar recibió daño pero su casillero 'Animator' está vacío en el Inspector.");
-            return;
-        }
+        if (animator == null) return;
 
         if (newHealth < _lastHealth)
         {
-            Debug.Log("¡Garmanar recibió daño! Ejecutando Flinch..."); 
             animator.SetTrigger("Flinch");
+            // 🎵 SUENA EL GOLPE
+            if (audioSource != null && hitSound != null) audioSource.PlayOneShot(hitSound);
         }
         _lastHealth = newHealth;
     }
@@ -58,20 +60,18 @@ public class EnemyView : MonoBehaviour
     // Lógica de Ataque para Garmanar
     private void PlayAttackAnimation()
     {
-        if (animator == null)
-        {
-            Debug.LogWarning("¡Atención! El árbitro mandó a atacar pero el casillero 'Animator' de Garmanar está vacío.");
-            return;
-        }
+        if (animator == null) return;
 
-        Debug.Log("¡El árbitro le dijo a Garmanar que ataque!"); 
         animator.SetTrigger("Attack");
+        // 🎵 SUENA EL ATAQUE
+        if (audioSource != null && attackSound != null) audioSource.PlayOneShot(attackSound);
     }
 
     private void HandleDefeated()
     {
         if (animator != null) animator.SetTrigger("Flinch"); 
         GetComponent<Collider>().enabled = false; 
+        // El sonido de muerte ya NO está acá, se mudó al Árbitro para que no se corte
     }
 
     private void OnDestroy()

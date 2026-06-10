@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI; 
 using UnityEngine.SceneManagement;
-using System.Collections; //Librería de Corrutinas
+using System.Collections; 
 using TMPro; 
 
 public class CombatManagerView : MonoBehaviour
@@ -22,7 +22,7 @@ public class CombatManagerView : MonoBehaviour
     public Material swirlMaterial;    
 
     [Header("UI Victoria Combate")]
-    public GameObject victoryPanel; // <-- ¡NUEVO!: Arrastrá acá tu cartel de VICTORY
+    public GameObject victoryPanel; 
 
     [Header("Game Over / Victoria")]
     public GameObject gameOverCanvas; 
@@ -33,6 +33,17 @@ public class CombatManagerView : MonoBehaviour
     public TextMeshProUGUI portalStatusText; 
     public TextMeshProUGUI powerStatusText; 
     public GameObject objectiveText;
+
+    [Header("AUDIO - Combate")]
+    public AudioSource globalMusicSource; 
+    public AudioSource combatBgmSource;   
+    public AudioSource sfxSource;         
+    
+    public AudioClip combatMusic;         
+    public AudioClip transitionSfx;       
+    public AudioClip victoryMusicSfx;     
+    public AudioClip defeatMusicSfx;      
+    public AudioClip enemyDeathSfx;       // <-- 🎵 NUEVO: El grito de muerte de Garmanar
 
     private EnemyViewModel _enemyViewModel;
     private CombatViewModel _combatViewModel; 
@@ -53,8 +64,11 @@ public class CombatManagerView : MonoBehaviour
 
     private IEnumerator StartCombatRoutine()
     {
-        // Nos aseguramos de que el panel de transición reciba clics/capturas al inicio
         if (transitionScreen != null) transitionScreen.raycastTarget = true;
+
+        if (sfxSource != null && transitionSfx != null) sfxSource.PlayOneShot(transitionSfx);
+        
+        if (globalMusicSource != null) globalMusicSource.Pause();
 
         Time.timeScale = 0f;
 
@@ -120,6 +134,12 @@ public class CombatManagerView : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
+        if (combatBgmSource != null && combatMusic != null)
+        {
+            combatBgmSource.clip = combatMusic;
+            combatBgmSource.Play();
+        }
+
         Time.timeScale = 1f;
     }
 
@@ -128,17 +148,22 @@ public class CombatManagerView : MonoBehaviour
         StartCoroutine(EndCombatRoutine(playerWon));
     }
 
-        private IEnumerator EndCombatRoutine(bool playerWon)
+    private IEnumerator EndCombatRoutine(bool playerWon)
     {
-        // 1. Apagamos la interfaz de combate vieja (botones de ataque)
         if (combatCanvas != null) combatCanvas.SetActive(false);
+        
+        // Apagamos la música de combate épica
+        if (combatBgmSource != null) combatBgmSource.Stop();
 
         if (playerWon)
         {
             // === SECUENCIA DE VICTORIA ===
-            Time.timeScale = 0.2f; // Cámara lenta épica para el impacto final
+            Time.timeScale = 0.2f; 
 
-            // 2. ¡Prendemos el cartel! Al estar en el TransitionCanvas, no se apaga.
+            // 🎵 SUENA LA VICTORIA Y EL GRITO DE GARMANAR JUNTOS
+            if (sfxSource != null && victoryMusicSfx != null) sfxSource.PlayOneShot(victoryMusicSfx);
+            if (sfxSource != null && enemyDeathSfx != null) sfxSource.PlayOneShot(enemyDeathSfx);
+
             if (victoryPanel != null) victoryPanel.SetActive(true);
 
             if (garmanarModel != null)
@@ -149,14 +174,11 @@ public class CombatManagerView : MonoBehaviour
                 
                 while (t < 1.5f)
                 {
-                    t += Time.unscaledDeltaTime; // Progreso en tiempo real
+                    t += Time.unscaledDeltaTime;
                     float progress = t / 1.5f;
                     
-                    // Efecto Pokémon: Aplastar e hundir hacia el piso
                     garmanarModel.transform.localScale = Vector3.Lerp(escalaOriginal, new Vector3(escalaOriginal.x, 0f, escalaOriginal.z), progress);
                     garmanarModel.transform.position = posicionOriginal + (Vector3.down * (progress * 1.5f));
-                    
-                    // Titileo
                     garmanarModel.SetActive(!garmanarModel.activeSelf);
                     
                     yield return null;
@@ -164,15 +186,14 @@ public class CombatManagerView : MonoBehaviour
                 garmanarModel.SetActive(false); 
             }
 
-            // 3. ¡CORRECCIÓN CLAVE!: Esperamos 1.5 segundos reales para que el jugador lea el cartel
-            // sin importar que el mundo 3D vaya a cámara lenta.
             yield return new WaitForSecondsRealtime(1.5f);
-            
             if (victoryPanel != null) victoryPanel.SetActive(false);
 
-            Time.timeScale = 1f; // Volvemos el tiempo a la normalidad
+            Time.timeScale = 1f; 
 
-            // 4. Encendemos cámaras y HUD de exploración del mapa
+            // 🎵 VOLVEMOS A LA MÚSICA DEL BOSQUE
+            if (globalMusicSource != null) globalMusicSource.UnPause();
+
             if (combatCamera != null) combatCamera.SetActive(false);
             if (mainCamera != null) mainCamera.SetActive(true);
             if (mainHUD != null) mainHUD.SetActive(true);
@@ -199,6 +220,11 @@ public class CombatManagerView : MonoBehaviour
         else
         {
             // === SECUENCIA DE DERROTA ===
+            if (playerView != null) playerView.PlayDeathAnimation();
+
+            // 🎵 SUENA LA PISTA DE DERROTA (GAME OVER)
+            if (sfxSource != null && defeatMusicSfx != null) sfxSource.PlayOneShot(defeatMusicSfx);
+
             if (transitionScreen != null)
             {
                 transitionScreen.material = null; 

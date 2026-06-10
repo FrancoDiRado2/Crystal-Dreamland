@@ -17,6 +17,13 @@ public class PlayerView : MonoBehaviour
     private Vector3 _velocity;
     private Vector3 _horizontalMove;
     private bool _isGrounded;
+    
+    [Header("Sonidos de Aman")]
+    public AudioSource audioSource;
+    public AudioClip attackSound;
+    public AudioClip hitSound;
+    public AudioClip deathSound;
+    public AudioClip healSound;
 
     // El Bootstrapper le da el cerebro cuando arranca el juego
     public void Initialize(PlayerViewModel viewModel)
@@ -137,25 +144,28 @@ public class PlayerView : MonoBehaviour
     // --- FUNCIONES DE COMBATE ---
     public void PlayAttackAnimation()
     {
-        if (_animator != null) 
-        {
-            _animator.SetTrigger("Attack");
-        }
+        if (_animator != null) _animator.SetTrigger("Attack");
+        if (audioSource != null && attackSound != null) audioSource.PlayOneShot(attackSound); // 🎵 SONIDO ATAQUE
     }
 
-    // NUEVO: La función que dispara la animación de recibir daño
     private void PlayFlinchAnimation()
     {
-        if (_animator != null) 
-        {
-            // OJO: Asegurate de que el Trigger en el Animator de Aman se llame exactamente "TakeDamage"
-            _animator.SetTrigger("Flinch");
-        }
+        if (_animator != null) _animator.SetTrigger("Flinch");
+        if (audioSource != null && hitSound != null) audioSource.PlayOneShot(hitSound); // 🎵 SONIDO DAÑO
+    }
+
+    public void PlayDeathAnimation()
+    {
+        if (audioSource != null && deathSound != null) audioSource.PlayOneShot(deathSound); // 🎵 SONIDO MUERTE
+    }
+
+    public void PlayHealSound()
+    {
+        if (audioSource != null && healSound != null) audioSource.PlayOneShot(healSound); // 🎵 SONIDO CURAR
     }
 
     private void OnDestroy()
     {
-        // La desuscripción TIENE que ir acá, solo cuando se destruye el objeto
         if (_viewModel != null)
         {
             _viewModel.OnTakeDamageFlinch -= PlayFlinchAnimation;
