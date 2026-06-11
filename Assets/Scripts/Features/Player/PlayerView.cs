@@ -92,7 +92,7 @@ public class PlayerView : MonoBehaviour
         if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame && _isGrounded)
         {
             _velocity.y = Mathf.Sqrt(_viewModel.JumpForce * -2f * _viewModel.Gravity);
-            PlayJumpSound(); 
+            //PlayJumpSound(); 
             TriggerJumpAnimation();
         }
 
@@ -199,8 +199,13 @@ public class PlayerView : MonoBehaviour
 
     public void PlayStepSound()
     {
-        if (audioSource != null && stepSound != null) 
-            audioSource.PlayOneShot(stepSound, Random.Range(0.4f, 0.6f));
+        // 🌟 Solo suena si Aman se está moviendo realmente
+        // Usamos la velocidad del CharacterController o el parámetro "Speed" del Animator
+        if (_animator.GetFloat("Speed") > 0.1f && _isGrounded)
+        {
+            if (audioSource != null && stepSound != null) 
+                audioSource.PlayOneShot(stepSound, 0.1f); // 🌟 Bajamos el volumen aquí (0.1f es suave)
+        }
     }
 
     public void PlayJumpSound()
