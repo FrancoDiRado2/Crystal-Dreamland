@@ -18,3 +18,5 @@ MonoBehaviour:
   jumpForce: 0.8
   gravity: -9.81
   currentPower: 25
+  maxHealth: 100
+  currentHealth: 100

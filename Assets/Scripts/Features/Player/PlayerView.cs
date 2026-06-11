@@ -28,15 +28,22 @@ public class PlayerView : MonoBehaviour
 
     [Header("Sonidos de Exploración")]
     public AudioClip stepSound;    
-    public AudioClip jumpSound;    
     public AudioClip landSound;    
+
+[Header("Volumen de Exploración")]
+    [Range(0f, 1f)] public float stepBaseVolume = 0.05f; // Barrita en el inspector
+    [Range(0f, 1f)] public float landBaseVolume = 0.2f;  // Barrita en el inspector
 
     [Header("Efectos Visuales")]
     public Light hitLight; 
 
-    // 🌟 NUEVA REFERENCIA PARA LA ANTORCHA
     [Header("Equipamiento")]
     public GameObject torchObject;
+
+    // 🌟 TEMPORIZADOR MATEMÁTICO PARA PASOS (Sin solapamientos)
+    private float _footstepTimer = 0f;
+    [SerializeField] private float _walkStepInterval = 0.45f;   // Cada cuánto suena al caminar (segundos)
+    [SerializeField] private float _sprintStepInterval = 0.3f;  // Cada cuánto suena al correr (segundos)
 
     public void Initialize(PlayerViewModel viewModel)
     {
@@ -63,6 +70,7 @@ public class PlayerView : MonoBehaviour
         _wasGrounded = _isGrounded;
         _isGrounded = _controller.isGrounded;
 
+        // Sonido de aterrizaje
         if (_isGrounded && !_wasGrounded && _velocity.y < -3f)
         {
             PlayLandSound();
@@ -80,7 +88,6 @@ public class PlayerView : MonoBehaviour
             if (Keyboard.current.dKey.isPressed) inputVector.x += 1;
             if (Keyboard.current.aKey.isPressed) inputVector.x -= 1;
             
-            // 🌟 LÓGICA DEL TOGGLE CON LA TECLA "T"
             if (Keyboard.current.tKey.wasPressedThisFrame)
             {
                 ToggleTorch();
@@ -89,10 +96,26 @@ public class PlayerView : MonoBehaviour
 
         CalculateMovement(inputVector.normalized, isSprinting);
 
+        // 🌟 LÓGICA DE PASOS SINTÉTICOS (Imposible que se solapen)
+        if (_isGrounded && _horizontalMove.magnitude > 0.1f)
+        {
+            _footstepTimer -= Time.deltaTime;
+            if (_footstepTimer <= 0f)
+            {
+                PlayFootstepAudio(); // Dispara el sonido
+                // Resetea el tiempo dependiendo si corremos o caminamos
+                _footstepTimer = isSprinting ? _sprintStepInterval : _walkStepInterval;
+            }
+        }
+        else
+        {
+            // Si nos detenemos, el reloj se reinicia y no suena nada
+            _footstepTimer = 0f;
+        }
+
         if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame && _isGrounded)
         {
             _velocity.y = Mathf.Sqrt(_viewModel.JumpForce * -2f * _viewModel.Gravity);
-            //PlayJumpSound(); 
             TriggerJumpAnimation();
         }
 
@@ -101,23 +124,20 @@ public class PlayerView : MonoBehaviour
         _controller.Move(finalMovement * Time.deltaTime);
     }
 
-    // 🌟 LA FUNCIÓN QUE PRENDE Y APAGA LA ANTORCHA
     private void ToggleTorch()
     {
         if (torchObject != null)
         {
-            // Cambia el estado del objeto en la mano
             bool isTorchActive = !torchObject.activeSelf;
             torchObject.SetActive(isTorchActive);
 
-            // Le avisa al Animator que cambie la postura de los brazos
             if (_animator != null)
             {
                 _animator.SetBool("HasTorch", isTorchActive);
             }
         }
     }
-    
+
     private void CalculateMovement(Vector2 input, bool isSprinting)
     {
         _horizontalMove = Vector3.zero;
@@ -173,7 +193,6 @@ public class PlayerView : MonoBehaviour
         if (_controller != null) _controller.enabled = true;
     }
     
-    // --- FUNCIONES DE COMBATE Y EFECTOS ---
     public void PlayAttackAnimation()
     {
         if (_animator != null) _animator.SetTrigger("Attack");
@@ -197,25 +216,24 @@ public class PlayerView : MonoBehaviour
         if (audioSource != null && healSound != null) audioSource.PlayOneShot(healSound); 
     }
 
-    public void PlayStepSound()
+// 🌟 REPRODUCTOR PRIVADO
+    private void PlayFootstepAudio()
     {
-        // 🌟 Solo suena si Aman se está moviendo realmente
-        // Usamos la velocidad del CharacterController o el parámetro "Speed" del Animator
-        if (_animator.GetFloat("Speed") > 0.1f && _isGrounded)
+        if (audioSource != null && stepSound != null) 
         {
-            if (audioSource != null && stepSound != null) 
-                audioSource.PlayOneShot(stepSound, 0.1f); // 🌟 Bajamos el volumen aquí (0.1f es suave)
+            // Usa el volumen de tu barrita, más un mini "ruido" aleatorio para que suene natural
+            float finalVolume = stepBaseVolume + Random.Range(0f, 0.02f);
+            audioSource.PlayOneShot(stepSound, finalVolume);
         }
-    }
-
-    public void PlayJumpSound()
-    {
-        if (audioSource != null && jumpSound != null) audioSource.PlayOneShot(jumpSound);
     }
 
     public void PlayLandSound()
     {
-        if (audioSource != null && landSound != null) audioSource.PlayOneShot(landSound);
+        if (audioSource != null && landSound != null) 
+        {
+            // Usa directamente el volumen de la barrita
+            audioSource.PlayOneShot(landSound, landBaseVolume);
+        }
     }
 
     private IEnumerator FlashLightRoutine()
