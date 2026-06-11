@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections; // Necesario para las Corrutinas
 
 public class EnemyView : MonoBehaviour
 {
@@ -8,7 +9,11 @@ public class EnemyView : MonoBehaviour
     [Header("Sonidos de Garmanar")]
     public AudioSource audioSource;
     public AudioClip attackSound;
-    public AudioClip hitSound; // 🎵 Agregado para cuando recibe daño
+    public AudioClip hitSound; 
+    public AudioClip deathSound;
+
+    [Header("Efectos Visuales")]
+    public Light hitLight; // 🌟 EL DESTELLO
 
     private EnemyViewModel _viewModel;
     private PlayerViewModel _playerViewModel; 
@@ -24,7 +29,6 @@ public class EnemyView : MonoBehaviour
         _viewModel.OnCombatStarted += HandleCombatStart;
         _viewModel.OnNotEnoughPower += HandleNotEnoughPower;
         
-        // Escuchamos animaciones
         _viewModel.OnHealthChanged += HandleHealthChanged;
         _viewModel.OnAttackAnim += PlayAttackAnimation;
 
@@ -43,7 +47,6 @@ public class EnemyView : MonoBehaviour
     private void HandleCombatStart() { }
     private void HandleNotEnoughPower() { }
 
-    // Lógica de Flinch para Garmanar
     private void HandleHealthChanged(int newHealth)
     {
         if (animator == null) return;
@@ -51,19 +54,19 @@ public class EnemyView : MonoBehaviour
         if (newHealth < _lastHealth)
         {
             animator.SetTrigger("Flinch");
-            // 🎵 SUENA EL GOLPE
             if (audioSource != null && hitSound != null) audioSource.PlayOneShot(hitSound);
+            
+            // 🌟 Disparamos el destello de luz
+            StartCoroutine(FlashLightRoutine());
         }
         _lastHealth = newHealth;
     }
 
-    // Lógica de Ataque para Garmanar
     private void PlayAttackAnimation()
     {
         if (animator == null) return;
 
         animator.SetTrigger("Attack");
-        // 🎵 SUENA EL ATAQUE
         if (audioSource != null && attackSound != null) audioSource.PlayOneShot(attackSound);
     }
 
@@ -71,7 +74,26 @@ public class EnemyView : MonoBehaviour
     {
         if (animator != null) animator.SetTrigger("Flinch"); 
         GetComponent<Collider>().enabled = false; 
-        // El sonido de muerte ya NO está acá, se mudó al Árbitro para que no se corte
+    }
+
+    // 🌟 LA MAGIA DEL DESTELLO
+    private IEnumerator FlashLightRoutine()
+    {
+        if (hitLight == null) yield break;
+
+        hitLight.gameObject.SetActive(true); 
+        float startIntensity = hitLight.intensity;
+        float t = 0f;
+        
+        while (t < 0.15f)
+        {
+            t += Time.deltaTime;
+            hitLight.intensity = Mathf.Lerp(startIntensity, 0f, t / 0.15f);
+            yield return null;
+        }
+        
+        hitLight.gameObject.SetActive(false); 
+        hitLight.intensity = startIntensity; 
     }
 
     private void OnDestroy()

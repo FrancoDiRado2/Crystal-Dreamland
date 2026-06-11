@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections; // Necesario para las Corrutinas
 
 [RequireComponent(typeof(Animator), typeof(CharacterController))]
 public class PlayerView : MonoBehaviour
@@ -7,7 +8,6 @@ public class PlayerView : MonoBehaviour
     [Header("UI Reference")]
     [SerializeField] private MainHUDView _hudView;
 
-    // Propiedad pública para que los cristales puedan interactuar con el cerebro
     public PlayerViewModel ViewModel => _viewModel; 
     private PlayerViewModel _viewModel;
 
@@ -25,12 +25,12 @@ public class PlayerView : MonoBehaviour
     public AudioClip deathSound;
     public AudioClip healSound;
 
-    // El Bootstrapper le da el cerebro cuando arranca el juego
+    [Header("Efectos Visuales")]
+    public Light hitLight; // 🌟 EL DESTELLO
+
     public void Initialize(PlayerViewModel viewModel)
     {
         _viewModel = viewModel;
-
-        // NUEVO: Suscribimos la Vista al evento de dolor del ViewModel
         _viewModel.OnTakeDamageFlinch += PlayFlinchAnimation;
     }
 
@@ -42,10 +42,8 @@ public class PlayerView : MonoBehaviour
 
     private void Update()
     {
-        // Freno de seguridad: esperamos a que el Bootstrapper nos dé el ViewModel
         if (_viewModel == null) return; 
 
-        // Bloqueo por nombre
         if (_hudView != null && !_hudView.HasSetPlayerName)
         {
             UpdateMoveAnimation(0f);
@@ -123,14 +121,12 @@ public class PlayerView : MonoBehaviour
 
     private void OnDisable()
     {
-        // Salvavidas para que no haga Moonwalk en el menú de pausa o combate
         if (_animator != null)
         {
             _animator.SetFloat("Speed", 0f);
         }
     }
 
-    // Función para teletransportar a Aman a la marca de combate
     public void TeleportTo(Transform targetTransform)
     {
         if (_controller != null) _controller.enabled = false;
@@ -145,23 +141,47 @@ public class PlayerView : MonoBehaviour
     public void PlayAttackAnimation()
     {
         if (_animator != null) _animator.SetTrigger("Attack");
-        if (audioSource != null && attackSound != null) audioSource.PlayOneShot(attackSound); // 🎵 SONIDO ATAQUE
+        if (audioSource != null && attackSound != null) audioSource.PlayOneShot(attackSound); 
     }
 
     private void PlayFlinchAnimation()
     {
         if (_animator != null) _animator.SetTrigger("Flinch");
-        if (audioSource != null && hitSound != null) audioSource.PlayOneShot(hitSound); // 🎵 SONIDO DAÑO
+        if (audioSource != null && hitSound != null) audioSource.PlayOneShot(hitSound); 
+        
+        // 🌟 Disparamos el destello de luz
+        StartCoroutine(FlashLightRoutine());
     }
 
     public void PlayDeathAnimation()
     {
-        if (audioSource != null && deathSound != null) audioSource.PlayOneShot(deathSound); // 🎵 SONIDO MUERTE
+        if (audioSource != null && deathSound != null) audioSource.PlayOneShot(deathSound); 
     }
 
     public void PlayHealSound()
     {
-        if (audioSource != null && healSound != null) audioSource.PlayOneShot(healSound); // 🎵 SONIDO CURAR
+        if (audioSource != null && healSound != null) audioSource.PlayOneShot(healSound); 
+    }
+
+    // 🌟 LA MAGIA DEL DESTELLO
+    private IEnumerator FlashLightRoutine()
+    {
+        if (hitLight == null) yield break;
+
+        hitLight.gameObject.SetActive(true); // Prendemos la luz
+        float startIntensity = hitLight.intensity;
+        float t = 0f;
+        
+        // Hacemos que la luz se apague suavemente en 0.15 segundos
+        while (t < 0.15f)
+        {
+            t += Time.deltaTime;
+            hitLight.intensity = Mathf.Lerp(startIntensity, 0f, t / 0.15f);
+            yield return null;
+        }
+        
+        hitLight.gameObject.SetActive(false); // La apagamos del todo
+        hitLight.intensity = startIntensity; // Le devolvemos su fuerza original para el próximo golpe
     }
 
     private void OnDestroy()
