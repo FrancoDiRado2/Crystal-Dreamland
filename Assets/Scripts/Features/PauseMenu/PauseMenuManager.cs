@@ -17,39 +17,45 @@ public class PauseMenuManager : MonoBehaviour
     public AudioMixer audioMixer;
 
     private bool isPaused = false;
-    private float preMuteMasterVolume; // Guarda el volumen antes de mutear
+    private float preMuteMasterVolume; 
 
-private void Start()
+    // 🌟 NUEVAS VARIABLES PARA GUARDAR EL ESTADO DEL MOUSE
+    private CursorLockMode previousLockState;
+    private bool previousCursorVisible;
+
+    private void Start()
     {
-        // 1. El menú arranca apagado
         pauseMenuPanel.SetActive(false);
-
-        // 2. Forzamos a que el Toggle arranque apagado por código también
         muteToggle.isOn = false;
 
-        // 3. Suscribimos los eventos
+        // 🌟 SINCRONIZAMOS LOS SLIDERS CON EL MIXER (Para mantener los ajustes del Main Menu)
+        SyncSlidersWithMixer();
+
         masterSlider.onValueChanged.AddListener(SetMasterVolume);
         musicSlider.onValueChanged.AddListener(SetMusicVolume);
         sfxSlider.onValueChanged.AddListener(SetSFXVolume);
         muteToggle.onValueChanged.AddListener(SetMute);
+    }
 
-        // 4. Inicializamos los valores en los sliders
-        masterSlider.value = 1f;
-        musicSlider.value = 0.8f;
-        sfxSlider.value = 1f;
+    private void SyncSlidersWithMixer()
+    {
+        if (audioMixer == null) return;
 
-        // 5. FORZAMOS el envío de esos valores al AudioMixer de entrada
-        SetMasterVolume(masterSlider.value);
-        SetMusicVolume(musicSlider.value);
-        SetSFXVolume(sfxSlider.value);
+        float outValue;
+        if (masterSlider != null && audioMixer.GetFloat("MasterVolume", out outValue))
+            masterSlider.SetValueWithoutNotify(Mathf.Pow(10f, outValue / 20f));
+
+        if (musicSlider != null && audioMixer.GetFloat("MusicVolume", out outValue))
+            musicSlider.SetValueWithoutNotify(Mathf.Pow(10f, outValue / 20f));
+
+        if (sfxSlider != null && audioMixer.GetFloat("SFXVolume", out outValue))
+            sfxSlider.SetValueWithoutNotify(Mathf.Pow(10f, outValue / 20f));
     }
 
     private void Update()
     {
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            // Solo evitamos la pausa si el jugador no puso su nombre y el cartel sigue activo.
-            // Usamos un chequeo seguro: si el nombre es vacío, no pausa.
             if (MainHUDView.Instance != null && !MainHUDView.Instance.HasSetPlayerName)
             {
                 return; 
@@ -64,11 +70,14 @@ private void Start()
 
     public void PauseGame()
     {
+        // 🌟 GUARDAMOS CÓMO ESTABA EL MOUSE ANTES DE PAUSAR
+        previousLockState = Cursor.lockState;
+        previousCursorVisible = Cursor.visible;
+
         pauseMenuPanel.SetActive(true);
-        Time.timeScale = 0f; // Congela el tiempo
+        Time.timeScale = 0f; 
         isPaused = true;
 
-        // Liberar el cursor para poder usar el menú
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -76,54 +85,48 @@ private void Start()
     public void ResumeGame()
     {
         pauseMenuPanel.SetActive(false);
-        Time.timeScale = 1f; // Descongela el tiempo
+        Time.timeScale = 1f; 
         isPaused = false;
 
-        // Volver a ocultar el cursor
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        // 🌟 RESTAURAMOS EL ESTADO ANTERIOR DEL MOUSE (Combate o Exploración)
+        Cursor.lockState = previousLockState;
+        Cursor.visible = previousCursorVisible;
     }
 
     public void GoToMainMenu()
     {
-        Time.timeScale = 1f; // IMPORTANTE: Descongelar el tiempo antes de cambiar de escena
-        // Cambiá "MainMenu" por el nombre exacto de tu escena de menú principal
+        Time.timeScale = 1f; 
         SceneManager.LoadScene("Main Menu"); 
     }
 
-    // --- LÓGICA DE AUDIO (Fórmula Logarítmica) ---
     private void SetMasterVolume(float value)
     {
         if (!muteToggle.isOn)
-        {
-            audioMixer.SetFloat("MasterVolume", Mathf.Log10(value) * 20);
-        }
+            audioMixer.SetFloat("MasterVolume", Mathf.Log10(Mathf.Max(value, 0.0001f)) * 20f);
     }
 
     private void SetMusicVolume(float value)
     {
-        audioMixer.SetFloat("MusicVolume", Mathf.Log10(value) * 20);
+        audioMixer.SetFloat("MusicVolume", Mathf.Log10(Mathf.Max(value, 0.0001f)) * 20f);
     }
 
     private void SetSFXVolume(float value)
     {
-        audioMixer.SetFloat("SFXVolume", Mathf.Log10(value) * 20);
+        audioMixer.SetFloat("SFXVolume", Mathf.Log10(Mathf.Max(value, 0.0001f)) * 20f);
     }
 
     private void SetMute(bool isMuted)
     {
         if (isMuted)
         {
-            // Guardamos el valor actual del slider antes de mutear
             preMuteMasterVolume = masterSlider.value;
-            audioMixer.SetFloat("MasterVolume", -80f); // -80db es silencio total
-            masterSlider.interactable = false; // Bloquea el slider
+            audioMixer.SetFloat("MasterVolume", -80f); 
+            masterSlider.interactable = false; 
         }
         else
         {
-            // Restauramos usando el valor del slider
-            audioMixer.SetFloat("MasterVolume", Mathf.Log10(preMuteMasterVolume) * 20);
-            masterSlider.interactable = true; // Desbloquea el slider
+            audioMixer.SetFloat("MasterVolume", Mathf.Log10(Mathf.Max(preMuteMasterVolume, 0.0001f)) * 20f);
+            masterSlider.interactable = true; 
         }
     }
 }
