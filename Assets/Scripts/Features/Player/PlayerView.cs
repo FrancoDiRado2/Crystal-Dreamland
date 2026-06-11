@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using System.Collections; // Necesario para las Corrutinas
+using System.Collections; 
 
 [RequireComponent(typeof(Animator), typeof(CharacterController))]
 public class PlayerView : MonoBehaviour
@@ -17,16 +17,26 @@ public class PlayerView : MonoBehaviour
     private Vector3 _velocity;
     private Vector3 _horizontalMove;
     private bool _isGrounded;
+    private bool _wasGrounded; 
     
-    [Header("Sonidos de Aman")]
+    [Header("Sonidos de Combate")]
     public AudioSource audioSource;
     public AudioClip attackSound;
     public AudioClip hitSound;
     public AudioClip deathSound;
     public AudioClip healSound;
 
+    [Header("Sonidos de Exploración")]
+    public AudioClip stepSound;    
+    public AudioClip jumpSound;    
+    public AudioClip landSound;    
+
     [Header("Efectos Visuales")]
-    public Light hitLight; // 🌟 EL DESTELLO
+    public Light hitLight; 
+
+    // 🌟 NUEVA REFERENCIA PARA LA ANTORCHA
+    [Header("Equipamiento")]
+    public GameObject torchObject;
 
     public void Initialize(PlayerViewModel viewModel)
     {
@@ -50,7 +60,14 @@ public class PlayerView : MonoBehaviour
             return; 
         }
 
+        _wasGrounded = _isGrounded;
         _isGrounded = _controller.isGrounded;
+
+        if (_isGrounded && !_wasGrounded && _velocity.y < -3f)
+        {
+            PlayLandSound();
+        }
+
         if (_isGrounded && _velocity.y < 0) _velocity.y = -2f;
 
         bool isSprinting = Keyboard.current != null && Keyboard.current.shiftKey.isPressed;
@@ -62,6 +79,12 @@ public class PlayerView : MonoBehaviour
             if (Keyboard.current.sKey.isPressed) inputVector.y -= 1;
             if (Keyboard.current.dKey.isPressed) inputVector.x += 1;
             if (Keyboard.current.aKey.isPressed) inputVector.x -= 1;
+            
+            // 🌟 LÓGICA DEL TOGGLE CON LA TECLA "T"
+            if (Keyboard.current.tKey.wasPressedThisFrame)
+            {
+                ToggleTorch();
+            }
         }
 
         CalculateMovement(inputVector.normalized, isSprinting);
@@ -69,6 +92,7 @@ public class PlayerView : MonoBehaviour
         if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame && _isGrounded)
         {
             _velocity.y = Mathf.Sqrt(_viewModel.JumpForce * -2f * _viewModel.Gravity);
+            PlayJumpSound(); 
             TriggerJumpAnimation();
         }
 
@@ -77,6 +101,23 @@ public class PlayerView : MonoBehaviour
         _controller.Move(finalMovement * Time.deltaTime);
     }
 
+    // 🌟 LA FUNCIÓN QUE PRENDE Y APAGA LA ANTORCHA
+    private void ToggleTorch()
+    {
+        if (torchObject != null)
+        {
+            // Cambia el estado del objeto en la mano
+            bool isTorchActive = !torchObject.activeSelf;
+            torchObject.SetActive(isTorchActive);
+
+            // Le avisa al Animator que cambie la postura de los brazos
+            if (_animator != null)
+            {
+                _animator.SetBool("HasTorch", isTorchActive);
+            }
+        }
+    }
+    
     private void CalculateMovement(Vector2 input, bool isSprinting)
     {
         _horizontalMove = Vector3.zero;
@@ -121,23 +162,18 @@ public class PlayerView : MonoBehaviour
 
     private void OnDisable()
     {
-        if (_animator != null)
-        {
-            _animator.SetFloat("Speed", 0f);
-        }
+        if (_animator != null) _animator.SetFloat("Speed", 0f);
     }
 
     public void TeleportTo(Transform targetTransform)
     {
         if (_controller != null) _controller.enabled = false;
-        
         transform.position = targetTransform.position;
         transform.rotation = targetTransform.rotation;
-        
         if (_controller != null) _controller.enabled = true;
     }
     
-    // --- FUNCIONES DE COMBATE ---
+    // --- FUNCIONES DE COMBATE Y EFECTOS ---
     public void PlayAttackAnimation()
     {
         if (_animator != null) _animator.SetTrigger("Attack");
@@ -148,8 +184,6 @@ public class PlayerView : MonoBehaviour
     {
         if (_animator != null) _animator.SetTrigger("Flinch");
         if (audioSource != null && hitSound != null) audioSource.PlayOneShot(hitSound); 
-        
-        // 🌟 Disparamos el destello de luz
         StartCoroutine(FlashLightRoutine());
     }
 
@@ -163,16 +197,30 @@ public class PlayerView : MonoBehaviour
         if (audioSource != null && healSound != null) audioSource.PlayOneShot(healSound); 
     }
 
-    // 🌟 LA MAGIA DEL DESTELLO
+    public void PlayStepSound()
+    {
+        if (audioSource != null && stepSound != null) 
+            audioSource.PlayOneShot(stepSound, Random.Range(0.4f, 0.6f));
+    }
+
+    public void PlayJumpSound()
+    {
+        if (audioSource != null && jumpSound != null) audioSource.PlayOneShot(jumpSound);
+    }
+
+    public void PlayLandSound()
+    {
+        if (audioSource != null && landSound != null) audioSource.PlayOneShot(landSound);
+    }
+
     private IEnumerator FlashLightRoutine()
     {
         if (hitLight == null) yield break;
 
-        hitLight.gameObject.SetActive(true); // Prendemos la luz
+        hitLight.gameObject.SetActive(true); 
         float startIntensity = hitLight.intensity;
         float t = 0f;
         
-        // Hacemos que la luz se apague suavemente en 0.15 segundos
         while (t < 0.15f)
         {
             t += Time.deltaTime;
@@ -180,15 +228,12 @@ public class PlayerView : MonoBehaviour
             yield return null;
         }
         
-        hitLight.gameObject.SetActive(false); // La apagamos del todo
-        hitLight.intensity = startIntensity; // Le devolvemos su fuerza original para el próximo golpe
+        hitLight.gameObject.SetActive(false); 
+        hitLight.intensity = startIntensity; 
     }
 
     private void OnDestroy()
     {
-        if (_viewModel != null)
-        {
-            _viewModel.OnTakeDamageFlinch -= PlayFlinchAnimation;
-        }
+        if (_viewModel != null) _viewModel.OnTakeDamageFlinch -= PlayFlinchAnimation;
     }
 }
