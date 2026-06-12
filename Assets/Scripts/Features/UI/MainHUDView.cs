@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using System.Collections; // 🌟 Necesario para que el cartel cuente los segundos
 
 public class MainHUDView : MonoBehaviour
 {
@@ -16,9 +17,12 @@ public class MainHUDView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _levelText; 
     [SerializeField] private TextMeshProUGUI _powerText; 
 
-    // 🌟 ACA METÉS TU TEXTO DE CRISTALES
     [Header("Misiones")]
     [SerializeField] private TextMeshProUGUI _crystalsText; 
+
+    // 🌟 ACÁ AGREGAMOS EL TEXTO PARA LOS AVISOS
+    [Header("Avisos en Pantalla")]
+    public TextMeshProUGUI warningText; 
 
     [Header("Check Boss (Mecánica Original)")]
     [SerializeField] private TextMeshProUGUI _bossCheckText; 
@@ -35,12 +39,10 @@ public class MainHUDView : MonoBehaviour
     {
         _playerVM = playerVM;
         _playerVM.OnPowerChanged += UpdatePowerUI;
-        
-        // 🌟 ESCUCHAMOS LOS CRISTALES
         _playerVM.OnCrystalsChanged += UpdateCrystalUI;
 
         UpdatePowerUI(_playerVM.GetCurrentPower());
-        UpdateCrystalUI(_playerVM.CrystalsCollected); // Setear 0/4 al inicio
+        UpdateCrystalUI(_playerVM.CrystalsCollected); 
     }
 
     private void OnEnable()
@@ -53,7 +55,7 @@ public class MainHUDView : MonoBehaviour
         if (_playerVM != null) 
         {
             _playerVM.OnPowerChanged -= UpdatePowerUI;
-            _playerVM.OnCrystalsChanged -= UpdateCrystalUI; // Limpieza
+            _playerVM.OnCrystalsChanged -= UpdateCrystalUI;
         }
         if (_popupNameInput != null) _popupNameInput.onEndEdit.RemoveAllListeners();
     }
@@ -61,6 +63,9 @@ public class MainHUDView : MonoBehaviour
     private void Start()
     {
         if (_levelText != null) _levelText.text = "Level: 1";
+        
+        // 🌟 NOS ASEGURAMOS QUE EL AVISO ESTÉ APAGADO AL EMPEZAR
+        if (warningText != null) warningText.gameObject.SetActive(false);
         
         if (_namePopupPanel != null) _namePopupPanel.SetActive(true);
         
@@ -85,7 +90,6 @@ public class MainHUDView : MonoBehaviour
         }
     }
 
-    // 🌟 NUEVA FUNCIÓN PARA EL TEXTO DE CRISTALES
     private void UpdateCrystalUI(int currentCrystals)
     {
         if (_crystalsText != null) 
@@ -94,7 +98,6 @@ public class MainHUDView : MonoBehaviour
         }
     }
 
-    // TODO ESTO QUEDA INTACTO
     private void UpdatePowerUI(int currentPower)
     {
         if (_powerText != null) _powerText.text = $"Power: {currentPower}";
@@ -110,5 +113,23 @@ public class MainHUDView : MonoBehaviour
                 _bossCheckText.text = $"Portal: {currentPower}/{_bossRequiredPower}";
             }
         }
+    }
+
+    // 🌟 NUEVA FUNCIÓN: PRENDE EL CARTEL ROJO 2 SEGUNDOS Y LO APAGA
+    public void ShowWarning(string mensaje)
+    {
+        if (warningText != null)
+        {
+            StopAllCoroutines(); // Por si chocás con el jefe dos veces rápido
+            StartCoroutine(CartelRoutine(mensaje));
+        }
+    }
+
+    private IEnumerator CartelRoutine(string mensaje)
+    {
+        warningText.text = mensaje;
+        warningText.gameObject.SetActive(true); // Lo hacemos visible
+        yield return new WaitForSeconds(2f); // Esperamos 2 segundos
+        warningText.gameObject.SetActive(false); // Lo volvemos a ocultar
     }
 }

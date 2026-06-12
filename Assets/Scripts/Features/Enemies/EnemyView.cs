@@ -1,5 +1,5 @@
 using UnityEngine;
-using System.Collections; // Necesario para las Corrutinas
+using System.Collections; 
 
 public class EnemyView : MonoBehaviour
 {
@@ -13,7 +13,7 @@ public class EnemyView : MonoBehaviour
     public AudioClip deathSound;
 
     [Header("Efectos Visuales")]
-    public Light hitLight; // 🌟 EL DESTELLO
+    public Light hitLight; 
 
     private EnemyViewModel _viewModel;
     private PlayerViewModel _playerViewModel; 
@@ -45,7 +45,13 @@ public class EnemyView : MonoBehaviour
     }
 
     private void HandleCombatStart() { }
-    private void HandleNotEnoughPower() { }
+
+    // 🌟 ACÁ LLENAMOS LA FUNCIÓN QUE ESTABA VACÍA 🌟
+    private void HandleNotEnoughPower() 
+    { 
+        // Llama a nuestro HUD y le pasa el texto que querés mostrar
+        MainHUDView.Instance.ShowWarning("Warning! Not enough power");
+    }
 
     private void HandleHealthChanged(int newHealth)
     {
@@ -56,7 +62,6 @@ public class EnemyView : MonoBehaviour
             animator.SetTrigger("Flinch");
             if (audioSource != null && hitSound != null) audioSource.PlayOneShot(hitSound);
             
-            // 🌟 Disparamos el destello de luz
             StartCoroutine(FlashLightRoutine());
         }
         _lastHealth = newHealth;
@@ -76,7 +81,6 @@ public class EnemyView : MonoBehaviour
         GetComponent<Collider>().enabled = false; 
     }
 
-    // 🌟 LA MAGIA DEL DESTELLO
     private IEnumerator FlashLightRoutine()
     {
         if (hitLight == null) yield break;
