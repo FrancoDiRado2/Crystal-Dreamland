@@ -15,7 +15,10 @@ public class MainHUDView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _hudNameText; 
     [SerializeField] private TextMeshProUGUI _levelText; 
     [SerializeField] private TextMeshProUGUI _powerText; 
-    // Removimos la referencia al slider de vida ya que no se necesita acá
+
+    // 🌟 ACA METÉS TU TEXTO DE CRISTALES
+    [Header("Misiones")]
+    [SerializeField] private TextMeshProUGUI _crystalsText; 
 
     [Header("Check Boss (Mecánica Original)")]
     [SerializeField] private TextMeshProUGUI _bossCheckText; 
@@ -28,14 +31,16 @@ public class MainHUDView : MonoBehaviour
         if (Instance == null) Instance = this;
     }
 
-    // Inyectado desde el Bootstrapper
     public void Initialize(PlayerViewModel playerVM)
     {
         _playerVM = playerVM;
         _playerVM.OnPowerChanged += UpdatePowerUI;
+        
+        // 🌟 ESCUCHAMOS LOS CRISTALES
+        _playerVM.OnCrystalsChanged += UpdateCrystalUI;
 
-        // Inicializamos los valores en base al poder real
         UpdatePowerUI(_playerVM.GetCurrentPower());
+        UpdateCrystalUI(_playerVM.CrystalsCollected); // Setear 0/4 al inicio
     }
 
     private void OnEnable()
@@ -48,6 +53,7 @@ public class MainHUDView : MonoBehaviour
         if (_playerVM != null) 
         {
             _playerVM.OnPowerChanged -= UpdatePowerUI;
+            _playerVM.OnCrystalsChanged -= UpdateCrystalUI; // Limpieza
         }
         if (_popupNameInput != null) _popupNameInput.onEndEdit.RemoveAllListeners();
     }
@@ -58,7 +64,6 @@ public class MainHUDView : MonoBehaviour
         
         if (_namePopupPanel != null) _namePopupPanel.SetActive(true);
         
-        // Hacemos que aparezca el mouse solo para escribir el nombre
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         
@@ -75,17 +80,25 @@ public class MainHUDView : MonoBehaviour
             HasSetPlayerName = true;
             Time.timeScale = 1f; 
 
-            // ¡Arreglo del mouse! Al cerrar el cartel, se bloquea y desaparece del juego
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
     }
 
+    // 🌟 NUEVA FUNCIÓN PARA EL TEXTO DE CRISTALES
+    private void UpdateCrystalUI(int currentCrystals)
+    {
+        if (_crystalsText != null) 
+        {
+            _crystalsText.text = $"{currentCrystals}/4 Crystals";
+        }
+    }
+
+    // TODO ESTO QUEDA INTACTO
     private void UpdatePowerUI(int currentPower)
     {
         if (_powerText != null) _powerText.text = $"Power: {currentPower}";
         
-        // Devolvemos tu lógica y textos exactos para el chequeo de cristales del portal
         if (_bossCheckText != null)
         {
             if (currentPower >= _bossRequiredPower)

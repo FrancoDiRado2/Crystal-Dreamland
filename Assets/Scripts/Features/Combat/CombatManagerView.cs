@@ -209,7 +209,7 @@ public class CombatManagerView : MonoBehaviour
             }
 
             if (muroInvisible != null) muroInvisible.SetActive(true);
-            if (portalStatusText != null) portalStatusText.text = "¡Cross the Door!";
+            if (portalStatusText != null) portalStatusText.text = "¡Cross the Gate!";
             if (powerStatusText != null) powerStatusText.text = "Free Way";
             if (objectiveText != null) objectiveText.SetActive(false);
             if (_combatViewModel != null) _combatViewModel.ClearTurnMessage(); 

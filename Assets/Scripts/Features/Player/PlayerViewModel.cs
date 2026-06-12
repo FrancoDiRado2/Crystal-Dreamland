@@ -1,15 +1,15 @@
 using System;
 
-// Fíjate que ya NO hereda de MonoBehaviour
 public class PlayerViewModel
 {
     private PlayerModel data;
 
     public event Action<int> OnPowerChanged; 
     public event Action<int> OnHealthChanged;
-    
-    // NUEVO: Evento para avisarle a la vista que grite de dolor
     public event Action OnTakeDamageFlinch;
+    
+    // 🌟 NUEVO: Evento para los cristales
+    public event Action<int> OnCrystalsChanged;
 
     public float WalkSpeed => data.walkSpeed;
     public float SprintSpeed => data.sprintSpeed;
@@ -17,24 +17,33 @@ public class PlayerViewModel
     public float JumpForce => data.jumpForce;
     public float Gravity => data.gravity;
 
-    // NUEVO: Propiedad para saber si Aman fue derrotada
     public bool IsDefeated => data.currentHealth <= 0; 
 
-    // Ahora recibe los datos a través del constructor
+    // 🌟 NUEVO: Propiedad para leer los cristales
+    public int CrystalsCollected => data.crystalsCollected; 
+
     public PlayerViewModel(PlayerModel model)
     {
         data = model;
         data.currentPower = 15; 
         data.currentHealth = data.maxHealth;
+        data.crystalsCollected = 0; // Setear en 0 al iniciar
     }
 
+    // 🌟 NUEVO: Función de cristales
+    public void AddCrystal()
+    {
+        data.crystalsCollected++;
+        OnCrystalsChanged?.Invoke(data.crystalsCollected);
+    }
+
+    // TODO ESTO QUEDA INTACTO PARA NO ROMPER AL JEFE
     public void AddPower(int amount)
     {
         data.currentPower += amount;
         OnPowerChanged?.Invoke(data.currentPower);
     }
 
-    // NUEVO: Restar cristales al curarse
     public void ConsumePower(int amount)
     {
         data.currentPower -= amount;
@@ -52,12 +61,9 @@ public class PlayerViewModel
         if (data.currentHealth < 0) data.currentHealth = 0;
         
         OnHealthChanged?.Invoke(data.currentHealth);
-
-        // NUEVO: Le avisamos a la Vista que ponga la animación de recibir daño
         OnTakeDamageFlinch?.Invoke();
     }
 
-    // NUEVO: Sumar vida sin pasarse de la vida máxima
     public void Heal(int amount)
     {
         data.currentHealth += amount;

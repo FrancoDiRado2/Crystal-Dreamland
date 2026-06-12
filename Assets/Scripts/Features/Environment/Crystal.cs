@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class Crystal : MonoBehaviour
 {
-    [SerializeField] private int _powerAmount = 5;
+    [SerializeField] private int _powerAmount = 5; // Mantenemos tu variable de poder
     [SerializeField] private AudioClip _collectSound;
     [SerializeField] private float _volume = 1f;
 
@@ -10,12 +10,15 @@ public class Crystal : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            // Busca la View del jugador y a través de ella accede al cerebro
             PlayerView playerView = other.GetComponent<PlayerView>();
             
             if (playerView != null && playerView.ViewModel != null)
             {
+                // 🌟 SUMA PODER (Para no romper al jefe)
                 playerView.ViewModel.AddPower(_powerAmount);
+                
+                // 🌟 SUMA CRISTAL (Para tu nuevo contador)
+                playerView.ViewModel.AddCrystal();
             }
 
             if (_collectSound != null)

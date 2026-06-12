@@ -13,7 +13,9 @@ public class PlayerModel : ScriptableObject
     [Header("Combat Stats")]
     public int currentPower = 15;
     
-    // NUEVO: Agregamos la vida de Aman
     public int maxHealth = 100; 
     public int currentHealth = 100; 
+
+    // 🌟 SOLO ESTO ES NUEVO
+    public int crystalsCollected = 0; 
 }
