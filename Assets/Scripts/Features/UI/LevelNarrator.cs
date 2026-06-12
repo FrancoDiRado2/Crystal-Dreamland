@@ -8,38 +8,48 @@ public class LevelNarrator : MonoBehaviour
     [SerializeField] private AudioSource _audioSource;
     [SerializeField] private TextMeshProUGUI _subtitleText;
 
-    [Header("Configuración del Evento")]
-    [SerializeField] private AudioClip _narratorClip;
-    [TextArea] [SerializeField] private string _spanishSubtitle;
+    [Header("Secuencia de Narración")]
+    public AudioClip[] narratorClips;
+    [TextArea] public string[] spanishSubtitles;
 
     private void Start()
     {
-        // Iniciamos la narración automáticamente al cargar el nivel
-        StartCoroutine(PlayNarrative());
+        if (_subtitleText != null) _subtitleText.gameObject.SetActive(false);
+        StartCoroutine(PlayNarrativeSequence());
     }
 
-    private IEnumerator PlayNarrative()
+    private IEnumerator PlayNarrativeSequence()
     {
-        // Pequeña espera para que el jugador se ubique al arrancar
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(1.5f);
 
-        if (_audioSource != null && _narratorClip != null)
+        int totalLines = Mathf.Min(narratorClips.Length, spanishSubtitles.Length);
+
+        for (int i = 0; i < totalLines; i++)
         {
-            // Disparamos audio y texto al mismo tiempo
-            _audioSource.PlayOneShot(_narratorClip);
-            
-            if (_subtitleText != null)
+            if (narratorClips[i] != null && _subtitleText != null)
             {
-                _subtitleText.text = _spanishSubtitle;
+                // Mostramos el texto
+                _subtitleText.text = spanishSubtitles[i];
                 _subtitleText.gameObject.SetActive(true);
+
+                // Preparamos y disparamos el audio
+                _audioSource.clip = narratorClips[i];
+                _audioSource.Play();
+
+                // 🌟 EL TRUCO: Le decimos al código que espere 1 solo fotograma.
+                // Esto le da tiempo a Unity para poner el "isPlaying" en verdadero.
+                yield return null;
+
+                // Ahora sí, se va a quedar clavado acá escuchando el audio hasta que termine
+                yield return new WaitWhile(() => _audioSource.isPlaying);
+
+                // Una pausa de medio segundo de respiración antes de la siguiente frase
+                yield return new WaitForSeconds(0.5f);
             }
-
-            // Mantenemos el subtítulo mientras dura el audio
-            yield return new WaitForSeconds(_narratorClip.length);
-
-            // Ocultamos
-            if (_subtitleText != null)
-                _subtitleText.gameObject.SetActive(false);
         }
+
+        // Apagamos el texto al terminar todo
+        if (_subtitleText != null)
+            _subtitleText.gameObject.SetActive(false);
     }
 }
