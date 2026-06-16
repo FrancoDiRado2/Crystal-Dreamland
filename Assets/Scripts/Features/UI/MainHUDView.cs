@@ -8,31 +8,33 @@ public class MainHUDView : MonoBehaviour
 
     private PlayerViewModel _playerVM; 
 
+    [Header("Contenedor General de Juego")]
+    [SerializeField] private GameObject _hudGameplayPanel; // 🌟 NUEVO: El contenedor de TODO el HUD de juego
+
     [Header("Cartel de Inicio (Centro)")]
     [SerializeField] private GameObject _namePopupPanel; 
     [SerializeField] private TMP_InputField _popupNameInput; 
 
     [Header("Panel Jugador (Arriba Izquierda)")]
     [SerializeField] private TextMeshProUGUI _hudNameText; 
-    [SerializeField] private TextMeshProUGUI _nameShadow; // 🌟 Sombra Name
+    [SerializeField] private TextMeshProUGUI _nameShadow; 
 
     [SerializeField] private TextMeshProUGUI _levelText; 
-    [SerializeField] private TextMeshProUGUI _levelShadow; // 🌟 Sombra Level
+    [SerializeField] private TextMeshProUGUI _levelShadow; 
 
     [SerializeField] private TextMeshProUGUI _powerText; 
-    [SerializeField] private TextMeshProUGUI _powerShadow; // 🌟 Sombra Power
+    [SerializeField] private TextMeshProUGUI _powerShadow; 
 
     [Header("Misiones")]
     [SerializeField] private TextMeshProUGUI _crystalsText; 
-    [SerializeField] private TextMeshProUGUI _crystalCountShadow; // 🌟 Sombra Crystals
+    [SerializeField] private TextMeshProUGUI _crystalCountShadow; 
 
-    // 🌟 ACÁ AGREGAMOS EL TEXTO PARA LOS AVISOS
     [Header("Avisos en Pantalla")]
     public TextMeshProUGUI warningText; 
 
     [Header("Check Boss (Mecánica Original)")]
     [SerializeField] private TextMeshProUGUI _bossCheckText; 
-    [SerializeField] private TextMeshProUGUI _bossCheckShadow; // 🌟 Sombra Boss Check
+    [SerializeField] private TextMeshProUGUI _bossCheckShadow; 
     [SerializeField] private int _bossRequiredPower = 25; 
 
     public bool HasSetPlayerName { get; private set; } = false;
@@ -72,11 +74,13 @@ public class MainHUDView : MonoBehaviour
         if (_levelText != null) 
         {
             _levelText.text = "Level: 1";
-            if (_levelShadow != null) _levelShadow.text = _levelText.text; // Sincroniza
+            if (_levelShadow != null) _levelShadow.text = _levelText.text; 
         }
         
-        // 🌟 NOS ASEGURAMOS QUE EL AVISO ESTÉ APAGADO AL EMPEZAR
         if (warningText != null) warningText.gameObject.SetActive(false);
+        
+        // 🌟 APAGAMOS TODO EL HUD DE JUEGO AL EMPEZAR
+        if (_hudGameplayPanel != null) _hudGameplayPanel.SetActive(false);
         
         if (_namePopupPanel != null) _namePopupPanel.SetActive(true);
         
@@ -93,10 +97,13 @@ public class MainHUDView : MonoBehaviour
             if (_hudNameText != null) 
             {
                 _hudNameText.text = playerName;
-                if (_nameShadow != null) _nameShadow.text = _hudNameText.text; // Sincroniza
+                if (_nameShadow != null) _nameShadow.text = _hudNameText.text; 
             }
 
             if (_namePopupPanel != null) _namePopupPanel.SetActive(false);
+            
+            // 🌟 ENCENDEMOS TODO EL HUD DE JUEGO YA QUE SE PUSO EL NOMBRE
+            if (_hudGameplayPanel != null) _hudGameplayPanel.SetActive(true);
             
             HasSetPlayerName = true;
             Time.timeScale = 1f; 
@@ -111,7 +118,7 @@ public class MainHUDView : MonoBehaviour
         if (_crystalsText != null) 
         {
             _crystalsText.text = $"{currentCrystals}/4 Crystals";
-            if (_crystalCountShadow != null) _crystalCountShadow.text = _crystalsText.text; // Sincroniza
+            if (_crystalCountShadow != null) _crystalCountShadow.text = _crystalsText.text; 
         }
     }
 
@@ -120,7 +127,7 @@ public class MainHUDView : MonoBehaviour
         if (_powerText != null) 
         {
             _powerText.text = $"Power: {currentPower}";
-            if (_powerShadow != null) _powerShadow.text = _powerText.text; // Sincroniza
+            if (_powerShadow != null) _powerShadow.text = _powerText.text; 
         }
         
         if (_bossCheckText != null)
@@ -134,16 +141,15 @@ public class MainHUDView : MonoBehaviour
                 _bossCheckText.text = $"Portal: {currentPower}/{_bossRequiredPower}";
             }
             
-            if (_bossCheckShadow != null) _bossCheckShadow.text = _bossCheckText.text; // Sincroniza
+            if (_bossCheckShadow != null) _bossCheckShadow.text = _bossCheckText.text; 
         }
     }
 
-    // 🌟 NUEVA FUNCIÓN: PRENDE EL CARTEL ROJO 2 SEGUNDOS Y LO APAGA
     public void ShowWarning(string mensaje)
     {
         if (warningText != null)
         {
-            StopAllCoroutines(); // Por si chocás con el jefe dos veces rápido
+            StopAllCoroutines(); 
             StartCoroutine(CartelRoutine(mensaje));
         }
     }
@@ -151,8 +157,8 @@ public class MainHUDView : MonoBehaviour
     private IEnumerator CartelRoutine(string mensaje)
     {
         warningText.text = mensaje;
-        warningText.gameObject.SetActive(true); // Lo hacemos visible
-        yield return new WaitForSeconds(2f); // Esperamos 2 segundos
-        warningText.gameObject.SetActive(false); // Lo volvemos a ocultar
+        warningText.gameObject.SetActive(true); 
+        yield return new WaitForSeconds(2f); 
+        warningText.gameObject.SetActive(false); 
     }
 }
