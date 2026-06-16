@@ -67,7 +67,8 @@ public class TitleView : MonoBehaviour
 
     private void HandleStartGame()
     {
-        SceneManager.LoadScene("Level 1");
+    // SceneManager.LoadScene("Level 1"); <-- BORRÁ O COMENTÁ ESTA LÍNEA
+    Debug.Log("El ViewModel autorizó el inicio. El LevelLoader se encarga del resto...");
     }
 
     private void HandleOpenOptions()
