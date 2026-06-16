@@ -70,6 +70,9 @@ public class CombatManagerView : MonoBehaviour
 
     private IEnumerator StartCombatRoutine()
     {
+        // 🌟 NUEVO: Si el narrador sigue hablando, lo cortamos en seco
+        if (LevelNarrator.Instance != null) LevelNarrator.Instance.CortarNarracion();
+
         if (transitionScreen != null) transitionScreen.raycastTarget = true;
         if (sfxSource != null && transitionSfx != null) sfxSource.PlayOneShot(transitionSfx);
         if (globalMusicSource != null) globalMusicSource.Pause();

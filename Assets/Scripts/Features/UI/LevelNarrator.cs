@@ -4,6 +4,9 @@ using System.Collections;
 
 public class LevelNarrator : MonoBehaviour
 {
+    // 🌟 Instancia global para poder llamarlo desde otros scripts
+    public static LevelNarrator Instance; 
+
     [Header("Referencias")]
     [SerializeField] private AudioSource _audioSource;
     [SerializeField] private TextMeshProUGUI _subtitleText;
@@ -14,11 +17,29 @@ public class LevelNarrator : MonoBehaviour
 
     [Header("Configuración de Subtítulos")]
     [Tooltip("Tiempo entre cada letra. 0.02f es rápido para seguirle el ritmo a la voz acelerada.")]
-    public float typingSpeed = 0.02f; // 🌟 NUEVO: Velocidad de escritura
+    public float typingSpeed = 0.02f;
+
+    // 🌟 Esta variable estática SOBREVIVE a los reinicios de escena (Try Again)
+    private static bool _yaHablo = false;
+
+    private void Awake()
+    {
+        // Configuramos el Singleton
+        if (Instance == null) Instance = this;
+    }
 
     private void Start()
     {
         if (_subtitleText != null) _subtitleText.gameObject.SetActive(false);
+
+        // Si ya habló en esta ejecución del juego, apagamos el narrador y no hacemos nada
+        if (_yaHablo)
+        {
+            gameObject.SetActive(false);
+            return;
+        }
+
+        _yaHablo = true; // Marcamos que ya habló para el futuro
         StartCoroutine(PlayNarrativeSequence());
     }
 
@@ -33,36 +54,34 @@ public class LevelNarrator : MonoBehaviour
             if (narratorClips[i] != null && _subtitleText != null)
             {
                 _subtitleText.gameObject.SetActive(true);
-
-                // Preparamos y disparamos el audio
                 _audioSource.clip = narratorClips[i];
                 _audioSource.Play();
 
-                // 🌟 NUEVO: Disparamos el efecto de máquina de escribir y esperamos a que termine
                 yield return StartCoroutine(TypeText(spanishSubtitles[i]));
-
-                // Por si el texto terminó de escribirse muy rápido, nos aseguramos de 
-                // esperar a que el audio termine de hablar antes de pasar a la siguiente frase.
                 yield return new WaitWhile(() => _audioSource.isPlaying);
-
-                // Una pausa de respiración un poco más corta para mantener el dinamismo
                 yield return new WaitForSeconds(0.4f);
             }
         }
 
-        // Apagamos el texto al terminar todo
-        if (_subtitleText != null)
-            _subtitleText.gameObject.SetActive(false);
+        if (_subtitleText != null) _subtitleText.gameObject.SetActive(false);
     }
 
-    // 🌟 NUEVA FUNCIÓN: Efecto Máquina de Escribir
     private IEnumerator TypeText(string line)
     {
-        _subtitleText.text = ""; // Vaciamos el texto antes de empezar
+        _subtitleText.text = ""; 
         foreach (char letter in line.ToCharArray())
         {
-            _subtitleText.text += letter; // Sumamos letra por letra
-            yield return new WaitForSeconds(typingSpeed); // Esperamos milisegundos
+            _subtitleText.text += letter; 
+            yield return new WaitForSeconds(typingSpeed); 
         }
+    }
+
+    // 🌟 NUEVA FUNCIÓN: Corta todo de golpe si empieza el combate
+    public void CortarNarracion()
+    {
+        StopAllCoroutines(); // Frena la máquina de escribir
+        if (_audioSource != null) _audioSource.Stop(); // Calla al narrador
+        if (_subtitleText != null) _subtitleText.gameObject.SetActive(false); // Esconde el texto
+        gameObject.SetActive(false); // Se apaga a sí mismo
     }
 }
