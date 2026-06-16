@@ -9,7 +9,7 @@ public class MainHUDView : MonoBehaviour
     private PlayerViewModel _playerVM; 
 
     [Header("Contenedor General de Juego")]
-    [SerializeField] private GameObject _hudGameplayPanel; // 🌟 NUEVO: El contenedor de TODO el HUD de juego
+    [SerializeField] private GameObject _hudGameplayPanel; 
 
     [Header("Cartel de Inicio (Centro)")]
     [SerializeField] private GameObject _namePopupPanel; 
@@ -38,6 +38,9 @@ public class MainHUDView : MonoBehaviour
     [SerializeField] private int _bossRequiredPower = 25; 
 
     public bool HasSetPlayerName { get; private set; } = false;
+
+    // 🌟 NUEVO: Variable estática para recordar el nombre entre muertes
+    private static string _savedPlayerName = ""; 
 
     private void Awake()
     {
@@ -78,22 +81,46 @@ public class MainHUDView : MonoBehaviour
         }
         
         if (warningText != null) warningText.gameObject.SetActive(false);
-        
-        // 🌟 APAGAMOS TODO EL HUD DE JUEGO AL EMPEZAR
-        if (_hudGameplayPanel != null) _hudGameplayPanel.SetActive(false);
-        
-        if (_namePopupPanel != null) _namePopupPanel.SetActive(true);
-        
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
-        
-        Time.timeScale = 0f; 
+
+        // 🌟 NUEVO: Lógica para saltear el popup si ya tenemos el nombre
+        if (!string.IsNullOrEmpty(_savedPlayerName))
+        {
+            // Ya jugó antes, seteamos el nombre guardado directamente
+            if (_hudNameText != null) 
+            {
+                _hudNameText.text = _savedPlayerName;
+                if (_nameShadow != null) _nameShadow.text = _savedPlayerName; 
+            }
+
+            if (_namePopupPanel != null) _namePopupPanel.SetActive(false);
+            if (_hudGameplayPanel != null) _hudGameplayPanel.SetActive(true);
+
+            HasSetPlayerName = true;
+            Time.timeScale = 1f; 
+
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+        else
+        {
+            // Es la primera vez que entra al juego
+            if (_hudGameplayPanel != null) _hudGameplayPanel.SetActive(false);
+            if (_namePopupPanel != null) _namePopupPanel.SetActive(true);
+            
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            
+            Time.timeScale = 0f; 
+        }
     }
 
     private void OnNameInputFinished(string playerName)
     {
         if (!string.IsNullOrEmpty(playerName))
         {
+            // 🌟 NUEVO: Guardamos el nombre en la estática para la próxima
+            _savedPlayerName = playerName;
+
             if (_hudNameText != null) 
             {
                 _hudNameText.text = playerName;
@@ -101,8 +128,6 @@ public class MainHUDView : MonoBehaviour
             }
 
             if (_namePopupPanel != null) _namePopupPanel.SetActive(false);
-            
-            // 🌟 ENCENDEMOS TODO EL HUD DE JUEGO YA QUE SE PUSO EL NOMBRE
             if (_hudGameplayPanel != null) _hudGameplayPanel.SetActive(true);
             
             HasSetPlayerName = true;
