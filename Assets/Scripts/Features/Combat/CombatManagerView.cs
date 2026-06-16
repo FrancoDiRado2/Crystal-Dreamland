@@ -35,7 +35,9 @@ public class CombatManagerView : MonoBehaviour
     
     [Header("Textos")]
     public TextMeshProUGUI portalStatusText; 
+    public TextMeshProUGUI portalStatusShadow; // 🌟 AGREGADO: Sombra del portal
     public TextMeshProUGUI powerStatusText; 
+    public TextMeshProUGUI powerStatusShadow; // 🌟 AGREGADO: Sombra del poder
     public GameObject objectiveText;
 
     [Header("AUDIO - Combate")]
@@ -218,8 +220,21 @@ public class CombatManagerView : MonoBehaviour
             }
 
             if (muroInvisible != null) muroInvisible.SetActive(true);
-            if (portalStatusText != null) portalStatusText.text = "¡Cross the Door!";
-            if (powerStatusText != null) powerStatusText.text = "Free Way";
+            
+            // 🌟 AGREGADO: Actualiza el texto original y también su sombra
+            if (portalStatusText != null) 
+            {
+                portalStatusText.text = "¡Cross the Gate!";
+                if (portalStatusShadow != null) portalStatusShadow.text = portalStatusText.text;
+            }
+            
+            // 🌟 AGREGADO: Actualiza el texto original y también su sombra
+            if (powerStatusText != null) 
+            {
+                powerStatusText.text = "Free Way";
+                if (powerStatusShadow != null) powerStatusShadow.text = powerStatusText.text;
+            }
+            
             if (objectiveText != null) objectiveText.SetActive(false);
             if (_combatViewModel != null) _combatViewModel.ClearTurnMessage(); 
 
