@@ -1,6 +1,6 @@
 using UnityEngine;
 using TMPro;
-using System.Collections; // 🌟 Necesario para que el cartel cuente los segundos
+using System.Collections;
 
 public class MainHUDView : MonoBehaviour
 {
@@ -14,11 +14,17 @@ public class MainHUDView : MonoBehaviour
 
     [Header("Panel Jugador (Arriba Izquierda)")]
     [SerializeField] private TextMeshProUGUI _hudNameText; 
+    [SerializeField] private TextMeshProUGUI _nameShadow; // 🌟 Sombra Name
+
     [SerializeField] private TextMeshProUGUI _levelText; 
+    [SerializeField] private TextMeshProUGUI _levelShadow; // 🌟 Sombra Level
+
     [SerializeField] private TextMeshProUGUI _powerText; 
+    [SerializeField] private TextMeshProUGUI _powerShadow; // 🌟 Sombra Power
 
     [Header("Misiones")]
     [SerializeField] private TextMeshProUGUI _crystalsText; 
+    [SerializeField] private TextMeshProUGUI _crystalCountShadow; // 🌟 Sombra Crystals
 
     // 🌟 ACÁ AGREGAMOS EL TEXTO PARA LOS AVISOS
     [Header("Avisos en Pantalla")]
@@ -26,6 +32,7 @@ public class MainHUDView : MonoBehaviour
 
     [Header("Check Boss (Mecánica Original)")]
     [SerializeField] private TextMeshProUGUI _bossCheckText; 
+    [SerializeField] private TextMeshProUGUI _bossCheckShadow; // 🌟 Sombra Boss Check
     [SerializeField] private int _bossRequiredPower = 25; 
 
     public bool HasSetPlayerName { get; private set; } = false;
@@ -62,7 +69,11 @@ public class MainHUDView : MonoBehaviour
 
     private void Start()
     {
-        if (_levelText != null) _levelText.text = "Level: 1";
+        if (_levelText != null) 
+        {
+            _levelText.text = "Level: 1";
+            if (_levelShadow != null) _levelShadow.text = _levelText.text; // Sincroniza
+        }
         
         // 🌟 NOS ASEGURAMOS QUE EL AVISO ESTÉ APAGADO AL EMPEZAR
         if (warningText != null) warningText.gameObject.SetActive(false);
@@ -79,7 +90,12 @@ public class MainHUDView : MonoBehaviour
     {
         if (!string.IsNullOrEmpty(playerName))
         {
-            if (_hudNameText != null) _hudNameText.text = playerName;
+            if (_hudNameText != null) 
+            {
+                _hudNameText.text = playerName;
+                if (_nameShadow != null) _nameShadow.text = _hudNameText.text; // Sincroniza
+            }
+
             if (_namePopupPanel != null) _namePopupPanel.SetActive(false);
             
             HasSetPlayerName = true;
@@ -95,12 +111,17 @@ public class MainHUDView : MonoBehaviour
         if (_crystalsText != null) 
         {
             _crystalsText.text = $"{currentCrystals}/4 Crystals";
+            if (_crystalCountShadow != null) _crystalCountShadow.text = _crystalsText.text; // Sincroniza
         }
     }
 
     private void UpdatePowerUI(int currentPower)
     {
-        if (_powerText != null) _powerText.text = $"Power: {currentPower}";
+        if (_powerText != null) 
+        {
+            _powerText.text = $"Power: {currentPower}";
+            if (_powerShadow != null) _powerShadow.text = _powerText.text; // Sincroniza
+        }
         
         if (_bossCheckText != null)
         {
@@ -112,6 +133,8 @@ public class MainHUDView : MonoBehaviour
             {
                 _bossCheckText.text = $"Portal: {currentPower}/{_bossRequiredPower}";
             }
+            
+            if (_bossCheckShadow != null) _bossCheckShadow.text = _bossCheckText.text; // Sincroniza
         }
     }
 
