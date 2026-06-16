@@ -30,9 +30,9 @@ public class PlayerView : MonoBehaviour
     public AudioClip stepSound;    
     public AudioClip landSound;    
 
-[Header("Volumen de Exploración")]
-    [Range(0f, 1f)] public float stepBaseVolume = 0.05f; // Barrita en el inspector
-    [Range(0f, 1f)] public float landBaseVolume = 0.2f;  // Barrita en el inspector
+    [Header("Volumen de Exploración")]
+    [Range(0f, 1f)] public float stepBaseVolume = 0.05f; 
+    [Range(0f, 1f)] public float landBaseVolume = 0.2f;  
 
     [Header("Efectos Visuales")]
     public Light hitLight; 
@@ -40,10 +40,9 @@ public class PlayerView : MonoBehaviour
     [Header("Equipamiento")]
     public GameObject torchObject;
 
-    // 🌟 TEMPORIZADOR MATEMÁTICO PARA PASOS (Sin solapamientos)
     private float _footstepTimer = 0f;
-    [SerializeField] private float _walkStepInterval = 0.45f;   // Cada cuánto suena al caminar (segundos)
-    [SerializeField] private float _sprintStepInterval = 0.3f;  // Cada cuánto suena al correr (segundos)
+    [SerializeField] private float _walkStepInterval = 0.45f;   
+    [SerializeField] private float _sprintStepInterval = 0.3f;  
 
     public void Initialize(PlayerViewModel viewModel)
     {
@@ -70,7 +69,6 @@ public class PlayerView : MonoBehaviour
         _wasGrounded = _isGrounded;
         _isGrounded = _controller.isGrounded;
 
-        // Sonido de aterrizaje
         if (_isGrounded && !_wasGrounded && _velocity.y < -3f)
         {
             PlayLandSound();
@@ -96,20 +94,17 @@ public class PlayerView : MonoBehaviour
 
         CalculateMovement(inputVector.normalized, isSprinting);
 
-        // 🌟 LÓGICA DE PASOS SINTÉTICOS (Imposible que se solapen)
         if (_isGrounded && _horizontalMove.magnitude > 0.1f)
         {
             _footstepTimer -= Time.deltaTime;
             if (_footstepTimer <= 0f)
             {
-                PlayFootstepAudio(); // Dispara el sonido
-                // Resetea el tiempo dependiendo si corremos o caminamos
+                PlayFootstepAudio(); 
                 _footstepTimer = isSprinting ? _sprintStepInterval : _walkStepInterval;
             }
         }
         else
         {
-            // Si nos detenemos, el reloj se reinicia y no suena nada
             _footstepTimer = 0f;
         }
 
@@ -137,6 +132,19 @@ public class PlayerView : MonoBehaviour
             }
         }
     }
+
+    // 🌟 NUEVO: Funciones para que el CombatManager controle la antorcha
+    public bool IsTorchActive => torchObject != null && torchObject.activeSelf;
+
+    public void ForceTorchState(bool isActive)
+    {
+        if (torchObject != null)
+        {
+            torchObject.SetActive(isActive);
+            if (_animator != null) _animator.SetBool("HasTorch", isActive);
+        }
+    }
+    // -------------------------------------------------------------
 
     private void CalculateMovement(Vector2 input, bool isSprinting)
     {
@@ -216,12 +224,10 @@ public class PlayerView : MonoBehaviour
         if (audioSource != null && healSound != null) audioSource.PlayOneShot(healSound); 
     }
 
-// 🌟 REPRODUCTOR PRIVADO
     private void PlayFootstepAudio()
     {
         if (audioSource != null && stepSound != null) 
         {
-            // Usa el volumen de tu barrita, más un mini "ruido" aleatorio para que suene natural
             float finalVolume = stepBaseVolume + Random.Range(0f, 0.02f);
             audioSource.PlayOneShot(stepSound, finalVolume);
         }
@@ -231,7 +237,6 @@ public class PlayerView : MonoBehaviour
     {
         if (audioSource != null && landSound != null) 
         {
-            // Usa directamente el volumen de la barrita
             audioSource.PlayOneShot(landSound, landBaseVolume);
         }
     }

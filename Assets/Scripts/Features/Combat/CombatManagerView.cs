@@ -17,6 +17,10 @@ public class CombatManagerView : MonoBehaviour
     public GameObject combatCamera; 
     public GameObject combatCanvas; 
 
+    [Header("Inmersión Combate")]
+    public GameObject groundTorch; // 🌟 NUEVO: La antorcha tirada en el suelo
+    private bool _playerHadTorch = false; // Memoria para saber si se la devolvemos
+
     [Header("Transición Estilo Pokémon")]
     public RawImage transitionScreen; 
     public Material swirlMaterial;    
@@ -43,7 +47,7 @@ public class CombatManagerView : MonoBehaviour
     public AudioClip transitionSfx;       
     public AudioClip victoryMusicSfx;     
     public AudioClip defeatMusicSfx;      
-    public AudioClip enemyDeathSfx;       // <-- 🎵 NUEVO: El grito de muerte de Garmanar
+    public AudioClip enemyDeathSfx;       
 
     private EnemyViewModel _enemyViewModel;
     private CombatViewModel _combatViewModel; 
@@ -65,19 +69,21 @@ public class CombatManagerView : MonoBehaviour
     private IEnumerator StartCombatRoutine()
     {
         if (transitionScreen != null) transitionScreen.raycastTarget = true;
-
         if (sfxSource != null && transitionSfx != null) sfxSource.PlayOneShot(transitionSfx);
-        
         if (globalMusicSource != null) globalMusicSource.Pause();
-
         Time.timeScale = 0f;
 
         if (playerView != null) 
         {
+            // 🌟 NUEVO: Chequeamos si entró con antorcha y se la sacamos
+            _playerHadTorch = playerView.IsTorchActive;
+            if (_playerHadTorch) playerView.ForceTorchState(false);
+
             playerView.enabled = false; 
             if (playerCombatSpot != null) playerView.TeleportTo(playerCombatSpot);
             if (playerAnimator != null) playerAnimator.SetFloat("Speed", 0f);
         }
+
         if (mainHUD != null) mainHUD.SetActive(false);
 
         RenderTexture snapshot = new RenderTexture(Screen.width, Screen.height, 24);
@@ -107,6 +113,9 @@ public class CombatManagerView : MonoBehaviour
 
         if (mainCamera != null) mainCamera.SetActive(false); 
         if (combatCamera != null) combatCamera.SetActive(true);
+
+        // 🌟 NUEVO: Prendemos la antorcha del suelo (Solo si la tenía en la mano)
+        if (groundTorch != null) groundTorch.SetActive(_playerHadTorch);
 
         Camera cCam = combatCamera.GetComponent<Camera>();
         if (cCam != null)
@@ -151,16 +160,14 @@ public class CombatManagerView : MonoBehaviour
     private IEnumerator EndCombatRoutine(bool playerWon)
     {
         if (combatCanvas != null) combatCanvas.SetActive(false);
-        
-        // Apagamos la música de combate épica
         if (combatBgmSource != null) combatBgmSource.Stop();
+        
+        // 🌟 NUEVO: Apagamos la antorcha del suelo (siempre)
+        if (groundTorch != null) groundTorch.SetActive(false);
 
         if (playerWon)
         {
-            // === SECUENCIA DE VICTORIA ===
             Time.timeScale = 0.2f; 
-
-            // 🎵 SUENA LA VICTORIA Y EL GRITO DE GARMANAR JUNTOS
             if (sfxSource != null && victoryMusicSfx != null) sfxSource.PlayOneShot(victoryMusicSfx);
             if (sfxSource != null && enemyDeathSfx != null) sfxSource.PlayOneShot(enemyDeathSfx);
 
@@ -191,7 +198,6 @@ public class CombatManagerView : MonoBehaviour
 
             Time.timeScale = 1f; 
 
-            // 🎵 VOLVEMOS A LA MÚSICA DEL BOSQUE
             if (globalMusicSource != null) globalMusicSource.UnPause();
 
             if (combatCamera != null) combatCamera.SetActive(false);
@@ -201,6 +207,9 @@ public class CombatManagerView : MonoBehaviour
             if (playerView != null) 
             {
                 playerView.enabled = true; 
+                // 🌟 NUEVO: Le devolvemos la antorcha a la mano si la tenía
+                if (_playerHadTorch) playerView.ForceTorchState(true);
+
                 if (playerAnimator != null)
                 {
                     playerAnimator.SetFloat("Speed", 0f);
@@ -209,7 +218,7 @@ public class CombatManagerView : MonoBehaviour
             }
 
             if (muroInvisible != null) muroInvisible.SetActive(true);
-            if (portalStatusText != null) portalStatusText.text = "¡Cross the Gate!";
+            if (portalStatusText != null) portalStatusText.text = "¡Cross the Door!";
             if (powerStatusText != null) powerStatusText.text = "Free Way";
             if (objectiveText != null) objectiveText.SetActive(false);
             if (_combatViewModel != null) _combatViewModel.ClearTurnMessage(); 
@@ -219,10 +228,7 @@ public class CombatManagerView : MonoBehaviour
         }
         else
         {
-            // === SECUENCIA DE DERROTA ===
             if (playerView != null) playerView.PlayDeathAnimation();
-
-            // 🎵 SUENA LA PISTA DE DERROTA (GAME OVER)
             if (sfxSource != null && defeatMusicSfx != null) sfxSource.PlayOneShot(defeatMusicSfx);
 
             if (transitionScreen != null)
