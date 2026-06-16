@@ -12,6 +12,10 @@ public class LevelNarrator : MonoBehaviour
     public AudioClip[] narratorClips;
     [TextArea] public string[] spanishSubtitles;
 
+    [Header("Configuración de Subtítulos")]
+    [Tooltip("Tiempo entre cada letra. 0.02f es rápido para seguirle el ritmo a la voz acelerada.")]
+    public float typingSpeed = 0.02f; // 🌟 NUEVO: Velocidad de escritura
+
     private void Start()
     {
         if (_subtitleText != null) _subtitleText.gameObject.SetActive(false);
@@ -28,28 +32,37 @@ public class LevelNarrator : MonoBehaviour
         {
             if (narratorClips[i] != null && _subtitleText != null)
             {
-                // Mostramos el texto
-                _subtitleText.text = spanishSubtitles[i];
                 _subtitleText.gameObject.SetActive(true);
 
                 // Preparamos y disparamos el audio
                 _audioSource.clip = narratorClips[i];
                 _audioSource.Play();
 
-                // 🌟 EL TRUCO: Le decimos al código que espere 1 solo fotograma.
-                // Esto le da tiempo a Unity para poner el "isPlaying" en verdadero.
-                yield return null;
+                // 🌟 NUEVO: Disparamos el efecto de máquina de escribir y esperamos a que termine
+                yield return StartCoroutine(TypeText(spanishSubtitles[i]));
 
-                // Ahora sí, se va a quedar clavado acá escuchando el audio hasta que termine
+                // Por si el texto terminó de escribirse muy rápido, nos aseguramos de 
+                // esperar a que el audio termine de hablar antes de pasar a la siguiente frase.
                 yield return new WaitWhile(() => _audioSource.isPlaying);
 
-                // Una pausa de medio segundo de respiración antes de la siguiente frase
-                yield return new WaitForSeconds(0.5f);
+                // Una pausa de respiración un poco más corta para mantener el dinamismo
+                yield return new WaitForSeconds(0.4f);
             }
         }
 
         // Apagamos el texto al terminar todo
         if (_subtitleText != null)
             _subtitleText.gameObject.SetActive(false);
+    }
+
+    // 🌟 NUEVA FUNCIÓN: Efecto Máquina de Escribir
+    private IEnumerator TypeText(string line)
+    {
+        _subtitleText.text = ""; // Vaciamos el texto antes de empezar
+        foreach (char letter in line.ToCharArray())
+        {
+            _subtitleText.text += letter; // Sumamos letra por letra
+            yield return new WaitForSeconds(typingSpeed); // Esperamos milisegundos
+        }
     }
 }
