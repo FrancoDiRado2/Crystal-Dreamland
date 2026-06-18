@@ -22,14 +22,19 @@ public class CombatManagerView : MonoBehaviour
     private bool _playerHadTorch = false; 
 
     [Header("Transición Estilo Pokémon")]
-    public RawImage transitionScreen; // 🌟 Esta es la RawImage que usaremos para la sangre de fondo
+    public RawImage transitionScreen; // 🌟 ESTO VUELVE A SER SOLO DEL REMOLINO INTACTO
     public Material swirlMaterial;    
 
     [Header("UI Victoria Combate")]
     public GameObject victoryPanel; 
 
     [Header("Game Over / Victoria")]
-    public GameObject gameOverCanvas; // 🌟 Tu panel que contiene el TXT y el Botón
+    public GameObject gameOverCanvas; // Tu Canvas apagado de siempre
+    [Tooltip("La RawImage roja que pusiste adentro del GameOverCanvas")]
+    public RawImage bloodScreen; // 🌟 NUEVO: El fondo rojo exclusivo
+    [Tooltip("Un CanvasGroup que contenga tu Texto y Botón de Try Again")]
+    public CanvasGroup gameOverUIGroup; // 🌟 NUEVO: Para que los botones aparezcan suavemente
+
     public GameObject garmanarModel; 
     public GameObject muroInvisible; 
     
@@ -179,7 +184,7 @@ public class CombatManagerView : MonoBehaviour
 
         if (playerWon)
         {
-            // --- VICTORIA (Gemanar muere) ---
+            // --- VICTORIA ---
             Time.timeScale = 0.2f; 
             if (sfxSource != null && victoryMusicSfx != null) sfxSource.PlayOneShot(victoryMusicSfx);
             if (sfxSource != null && enemyDeathSfx != null) sfxSource.PlayOneShot(enemyDeathSfx);
@@ -214,7 +219,6 @@ public class CombatManagerView : MonoBehaviour
                         yield return null;
                     }
                 }
-                
                 garmanarModel.SetActive(false); 
             }
 
@@ -264,65 +268,46 @@ public class CombatManagerView : MonoBehaviour
         }
         else
         {
-            // --- GAME OVER (Aman muere) ---
+            // --- GAME OVER ---
             if (playerView != null) playerView.PlayDeathAnimation(); 
             if (sfxSource != null && defeatMusicSfx != null) sfxSource.PlayOneShot(defeatMusicSfx);
 
             Time.timeScale = 0.3f;
             if (combatBgmSource != null) StartCoroutine(DistortMusic(combatBgmSource));
 
-            // 1. 🌟 FIX DE CAÍDA: Usamos el truco de la jerarquía para que caiga desde los pies
+            // Caída de Aman como tronco
             if (playerView != null)
             {
                 StartCoroutine(HierarchyCollapsePlayer(playerView.transform, 1.5f)); 
             }
 
-            // 2. 🌟 FIX DE UI: Limpiamos y ordenamos la pantalla roja
-            if (transitionScreen != null)
+            // Prendemos el Canvas que siempre tuviste
+            if (gameOverCanvas != null) gameOverCanvas.SetActive(true);
+
+            // Escondemos los botones temporalmente
+            if (gameOverUIGroup != null) 
             {
-                // Limpiamos la RawImage por si tenía el shader de swirl puesto
-                transitionScreen.material = null; 
-                transitionScreen.texture = null;
-                
-                // Color rojo lúgubre
-                transitionScreen.color = new Color(0.5f, 0f, 0f, 0f); 
-                transitionScreen.gameObject.SetActive(true);
+                gameOverUIGroup.alpha = 0f;
+                gameOverUIGroup.interactable = false;
+                gameOverUIGroup.blocksRaycasts = false;
+            }
 
-                // Mandamos la imagen de sangre AL FONDO de su Canvas
-                transitionScreen.transform.SetAsFirstSibling(); 
-                transitionScreen.raycastTarget = false; // Que no bloquee clics
-
-                // Fade In de la sangre de fondo
+            // Hacemos el fade in de la sangre de forma independiente
+            if (bloodScreen != null)
+            {
+                bloodScreen.color = new Color(0.5f, 0f, 0f, 0f);
                 StartCoroutine(FadeBloodBackground(2.5f));
             }
 
+            // Esperamos un momento trágico mientras ella cae (tiempo real)
+            yield return new WaitForSecondsRealtime(2f);
+
             Time.timeScale = 0f;
             
-            if (gameOverCanvas != null) 
+            // Aparecen los textos inmaculados
+            if (gameOverUIGroup != null) 
             {
-                gameOverCanvas.SetActive(true);
-                
-                // Mandamos tu menú de Try Again AL FRENTE de todo
-                gameOverCanvas.transform.SetAsLastSibling(); 
-
-                CanvasGroup cg = gameOverCanvas.GetComponent<CanvasGroup>();
-                if (cg == null) cg = gameOverCanvas.AddComponent<CanvasGroup>();
-                
-                // Aseguramos que el color del menú Try Again sea limpio (Blanco puro/Original)
-                Graphic[] graphics = gameOverCanvas.GetComponentsInChildren<Graphic>();
-                foreach (var g in graphics)
-                {
-                    if (g.gameObject != transitionScreen.gameObject) // No tocar la sangre
-                    {
-                        Color c = g.color;
-                        c.a = graphics is TextMeshProUGUI ? c.a : 1f; // Respetar alphas de textos
-                        // Si el botón o el texto se veían rojos, esto los limpia:
-                        if (g is Image && g.color.r > 0.8f && g.color.g < 0.2f) g.color = Color.white; 
-                    }
-                }
-
-                // Fade In ESPECTRAL del menú (limpio)
-                StartCoroutine(FadeInGameOverMenu(cg, 1.5f));
+                StartCoroutine(FadeInGameOverMenu(gameOverUIGroup, 1.5f));
             }
             
             Cursor.lockState = CursorLockMode.None;
@@ -346,13 +331,13 @@ public class CombatManagerView : MonoBehaviour
 
     private IEnumerator FadeBloodBackground(float duration)
     {
+        if (bloodScreen == null) yield break;
         float t = 0f;
         while (t < duration)
         {
             t += Time.unscaledDeltaTime;
-            // Opacidad máxima de 0.75f para que no tape todo, se vea lúgubre pero legible
             float alpha = Mathf.Lerp(0f, 0.75f, t / duration); 
-            transitionScreen.color = new Color(0.5f, 0f, 0f, alpha);
+            bloodScreen.color = new Color(0.5f, 0f, 0f, alpha);
             yield return null;
         }
     }
@@ -368,27 +353,23 @@ public class CombatManagerView : MonoBehaviour
             yield return null;
         }
         cg.alpha = 1f;
+        cg.interactable = true;
+        cg.blocksRaycasts = true;
     }
 
     private IEnumerator HierarchyCollapsePlayer(Transform playerTransform, float duration)
     {
-        // 1. Apagar cerebros
         if (playerAnimator != null) playerAnimator.enabled = false;
         CharacterController cc = playerTransform.GetComponent<CharacterController>();
         if (cc != null) cc.enabled = false;
 
-        // 2. Crear el objeto "Pivote de Pies" invisible
         GameObject pivotGO = new GameObject("DeathPivot_Feet");
-        // Lo posicionamos exactamente donde están los pies de Aman (suponiendo ombligo a 1m)
         pivotGO.transform.position = playerTransform.position + Vector3.down * 1f; 
         pivotGO.transform.rotation = playerTransform.rotation;
 
-        // 3. Emparentar (Aman ahora es hija del pivote invisible)
         playerTransform.SetParent(pivotGO.transform);
 
-        // 4. Rotar el PIVOTE (cae como tabla)
         Quaternion startRot = pivotGO.transform.rotation;
-        // Rotamos 90 grados hacia atrás (eje X local negativo)
         Quaternion endRot = startRot * Quaternion.Euler(-90f, 0f, 0f); 
 
         float t = 0f;
@@ -398,10 +379,6 @@ public class CombatManagerView : MonoBehaviour
             pivotGO.transform.rotation = Quaternion.Slerp(startRot, endRot, t / duration);
             yield return null;
         }
-        
-        // Opcional: Soltar jerarquía al terminar
-        // playerTransform.SetParent(null);
-        // Destroy(pivotGO);
     }
 
     private IEnumerator FadeOutMusic(AudioSource source, float duration)
