@@ -1802,7 +1802,7 @@ GameObject:
   m_Component:
   - component: {fileID: 747493340}
   m_Layer: 0
-  m_Name: Video_Manager
+  m_Name: VideoManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2244,7 +2244,7 @@ VideoPlayer:
   m_EnabledAudioTracks: 
   m_DirectAudioMutes: 
   m_ControlledAudioTrackCount: 0
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_SkipOnDrop: 1
   m_Looping: 0
   m_WaitForFirstFrame: 1
@@ -4128,6 +4128,7 @@ MonoBehaviour:
   panelCarga: {fileID: 2033359779}
   textoProgreso: {fileID: 819891998}
   textoTip: {fileID: 899841851}
+  textoCitaTolkien: {fileID: 748773566}
   velocidadCargaVisual: 0.1
 --- !u!1 &1820634994
 GameObject:
@@ -4617,11 +4618,12 @@ MonoBehaviour:
   fadeDuration: 1.5
   minDisplayDuration: 3.5
   zoomAmount: 1.08
-  delayedMenuAnimation: {fileID: 877271051}
-  smokeEarlyStart: 2
+  smokeVideoPlayer: {fileID: 877271053}
+  smokeStartTime: 4.5
+  smokeEarlyStart: 25
   menuButtonsGroup: {fileID: 1289847602}
-  buttonFadeDelay: 5
-  buttonFadeDuration: 1
+  buttonFadeDelay: 2.8
+  buttonFadeDuration: 0.5
 --- !u!82 &2046697246
 AudioSource:
   m_ObjectHideFlags: 0

@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using System.Collections;
 using UnityEngine.InputSystem;
 using TMPro;
+using UnityEngine.Video; 
 
 public class StoryboardCinematic : MonoBehaviour
 {
@@ -35,27 +36,31 @@ public class StoryboardCinematic : MonoBehaviour
     public float minDisplayDuration = 3.5f; 
     public float zoomAmount = 1.08f; 
 
-    [Header("Animación Final del Menú")]
-    public GameObject delayedMenuAnimation; 
-    public float smokeEarlyStart = 1.5f;
+    [Header("Efecto del Humo (Video Separado)")]
+    [Tooltip("El VideoPlayer que tiene SOLAMENTE el humo.")]
+    public VideoPlayer smokeVideoPlayer; // 🌟 AHORA ESTO ES SOLO PARA EL HUMO
+    [Tooltip("Segundo exacto donde hace el 'soplo' épico (Ej: 4.5)")]
+    public double smokeStartTime = 0f; 
+    [Tooltip("Cuántos segundos ANTES de terminar el fuego arranca el humo")]
+    public float smokeEarlyStart = 0.5f;
 
     [Header("Efecto 'Soplo' de Botones")]
-    [Tooltip("El Canvas Group que tiene tus botones adentro")]
-    public CanvasGroup menuButtonsGroup; // 🌟 NUEVO: Control de los botones
-    [Tooltip("Segundos a esperar desde que arranca el fuego hasta que aparecen los botones")]
-    public float buttonFadeDelay = 2.0f; // 🌟 NUEVO: El timing del soplo
-    [Tooltip("Cuánto tarda en aparecer suavemente el menú de botones")]
+    public CanvasGroup menuButtonsGroup; 
+    public float buttonFadeDelay = 0.5f; 
     public float buttonFadeDuration = 1.0f; 
 
     private Coroutine cinematicCoroutine;
+    private bool buttonsDone = false;
+    private bool isSkipping = false;
 
     private void Start()
     {
+        if (storyboardDisplay != null) storyboardDisplay.gameObject.SetActive(true);
+        if (fadeCurtain != null) fadeCurtain.gameObject.SetActive(true);
+
         if (mainMenuContainer != null) mainMenuContainer.SetActive(false);
         if (blackBackground != null) blackBackground.SetActive(true);
-        if (delayedMenuAnimation != null) delayedMenuAnimation.SetActive(false); 
 
-        // Escondemos los botones al arrancar
         if (menuButtonsGroup != null)
         {
             menuButtonsGroup.alpha = 0f;
@@ -109,10 +114,7 @@ public class StoryboardCinematic : MonoBehaviour
 
             yield return FadeCurtainAlpha(1f, 0f, fadeDuration);
 
-            if (subtitles.Length > i && subtitleText != null)
-            {
-                subtitleText.text = subtitles[i];
-            }
+            if (subtitles.Length > i && subtitleText != null) subtitleText.text = subtitles[i];
 
             if (narratorClips.Length > i && narratorClips[i] != null && narratorSource != null)
             {
@@ -129,10 +131,13 @@ public class StoryboardCinematic : MonoBehaviour
                 if (mainMenuContainer != null) mainMenuContainer.SetActive(true);
                 if (blackBackground != null) blackBackground.SetActive(false);
 
-                // 🌟 Arrancamos el temporizador de los botones en paralelo
-                if (menuButtonsGroup != null) StartCoroutine(FadeInButtons());
+                // Precarga el video del humo sin mostrarlo
+                if (smokeVideoPlayer != null) smokeVideoPlayer.Prepare();
 
                 yield return BurnImage(burnDuration);
+
+                if (storyboardDisplay != null) storyboardDisplay.gameObject.SetActive(false);
+                yield return new WaitUntil(() => buttonsDone);
             }
             else
             {
@@ -143,24 +148,30 @@ public class StoryboardCinematic : MonoBehaviour
         EndCinematic();
     }
 
-    // 🌟 LA MAGIA DE LOS BOTONES
-    private IEnumerator FadeInButtons()
+    private IEnumerator FadeInButtonsRoutine()
     {
-        // Esperamos a que llegue el momento del "soplo"
-        yield return new WaitForSeconds(buttonFadeDelay);
-
-        float t = 0f;
-        while (t < buttonFadeDuration)
+        buttonsDone = false;
+        if (menuButtonsGroup != null)
         {
-            t += Time.deltaTime;
-            menuButtonsGroup.alpha = Mathf.Lerp(0f, 1f, t / buttonFadeDuration);
-            yield return null;
+            menuButtonsGroup.alpha = 0f;
+            menuButtonsGroup.interactable = false;
+            menuButtonsGroup.blocksRaycasts = false;
+
+            yield return new WaitForSeconds(buttonFadeDelay);
+
+            float t = 0f;
+            while (t < buttonFadeDuration)
+            {
+                t += Time.deltaTime;
+                menuButtonsGroup.alpha = Mathf.Lerp(0f, 1f, t / buttonFadeDuration);
+                yield return null;
+            }
+            
+            menuButtonsGroup.alpha = 1f;
+            menuButtonsGroup.interactable = true;
+            menuButtonsGroup.blocksRaycasts = true;
         }
-        
-        // Lo dejamos 100% visible y clickeable
-        menuButtonsGroup.alpha = 1f;
-        menuButtonsGroup.interactable = true;
-        menuButtonsGroup.blocksRaycasts = true;
+        buttonsDone = true;
     }
 
     private IEnumerator ZoomImage(float duration)
@@ -181,18 +192,24 @@ public class StoryboardCinematic : MonoBehaviour
     {
         storyboardDisplay.material = burnMaterial;
         float t = 0f;
-        bool smokePreloaded = false;
+        bool elementsPreloaded = false;
         
-        float timeToStartSmoke = Mathf.Max(0f, duration - smokeEarlyStart);
+        float timeToStartElements = Mathf.Max(0f, duration - smokeEarlyStart);
 
         while (t < duration)
         {
             t += Time.deltaTime;
 
-            if (!smokePreloaded && t >= timeToStartSmoke)
+            if (!elementsPreloaded && t >= timeToStartElements)
             {
-                if (delayedMenuAnimation != null) delayedMenuAnimation.SetActive(true);
-                smokePreloaded = true;
+                if (smokeVideoPlayer != null && !isSkipping) 
+                {
+                    // Transición normal: saltamos al instante épico
+                    smokeVideoPlayer.time = smokeStartTime; 
+                    smokeVideoPlayer.Play();
+                }
+                StartCoroutine(FadeInButtonsRoutine());
+                elementsPreloaded = true;
             }
 
             float burnValue = Mathf.Lerp(0f, 1f, t / duration);
@@ -201,7 +218,16 @@ public class StoryboardCinematic : MonoBehaviour
         }
         
         burnMaterial.SetFloat("_BurnAmount", 1f);
-        if (!smokePreloaded && delayedMenuAnimation != null) delayedMenuAnimation.SetActive(true);
+        
+        if (!elementsPreloaded) 
+        {
+            if (smokeVideoPlayer != null && !isSkipping) 
+            {
+                smokeVideoPlayer.time = smokeStartTime;
+                smokeVideoPlayer.Play();
+            }
+            StartCoroutine(FadeInButtonsRoutine());
+        }
     }
 
     private IEnumerator FadeCurtainAlpha(float startAlpha, float endAlpha, float duration)
@@ -235,9 +261,13 @@ public class StoryboardCinematic : MonoBehaviour
 
     private void SkipCinematic()
     {
+        if (isSkipping) return; 
+        isSkipping = true;
+
         StopAllCoroutines(); 
         if (narratorSource != null) narratorSource.Stop();
         if (subtitleText != null) subtitleText.text = "";
+        
         EndCinematic();
     }
 
@@ -246,14 +276,26 @@ public class StoryboardCinematic : MonoBehaviour
         storyboardDisplay.material = null; 
         if (burnMaterial != null) burnMaterial.SetFloat("_BurnAmount", 0f);
 
+        if (storyboardDisplay != null) storyboardDisplay.gameObject.SetActive(false);
+        if (fadeCurtain != null) fadeCurtain.gameObject.SetActive(false);
+        if (blackBackground != null) blackBackground.SetActive(false);
         if (cinematicCanvas != null) cinematicCanvas.SetActive(false);
-        if (mainMenuContainer != null) mainMenuContainer.SetActive(true);
-        if (delayedMenuAnimation != null) delayedMenuAnimation.SetActive(true);
 
-        // Si el jugador hace Skip, forzamos a que los botones se vean al instante
+        if (mainMenuContainer != null) mainMenuContainer.SetActive(true);
+        
+        if (smokeVideoPlayer != null) 
+        {
+            // 🌟 LA REGLA DE ORO DEL SKIP
+            if (isSkipping)
+            {
+                smokeVideoPlayer.time = 0f; // Humo desde el principio
+            }
+            smokeVideoPlayer.Play();
+        }
+
         if (menuButtonsGroup != null)
         {
-            menuButtonsGroup.alpha = 1f;
+            menuButtonsGroup.alpha = 1f; // Botones visibles de golpe
             menuButtonsGroup.interactable = true;
             menuButtonsGroup.blocksRaycasts = true;
         }

@@ -10,13 +10,17 @@ public class LevelLoader : MonoBehaviour
     public TextMeshProUGUI textoProgreso;
     
     [Tooltip("El texto de la UI donde se va a mostrar el tip de historia.")]
-    public TextMeshProUGUI textoTip; // 🌟 Agregamos la referencia al nuevo texto
+    public TextMeshProUGUI textoTip;
+
+    [Header("Detalles del Menú")]
+    [Tooltip("El objeto de texto que contiene la cita de Tolkien (se apagará al cargar).")]
+    public GameObject textoCitaTolkien; // 🌟 NUEVO: Referencia para la cita de Tolkien
 
     [Header("Configuración")]
     [Tooltip("Qué tan rápido sube el porcentaje. Poné 0.2 para unos 5 segundos.")]
     public float velocidadCargaVisual = 0.2f; 
 
-    // 🌟 Acá están tus frases guardadas
+    // Acá están tus frases guardadas
     private string[] tipsLore = new string[]
     {
         "\"El bosque de Garmanar guarda secretos que ni la luz del sol puede revelar...\"",
@@ -27,7 +31,13 @@ public class LevelLoader : MonoBehaviour
 
     public void CargarNivel(int indiceEscena)
     {
-        // 🌟 Antes de prender el panel, elegimos un tip al azar y se lo pasamos a la UI
+        // 🌟 NUEVO: Apagamos la cita de Tolkien instantáneamente al hacer clic en Play
+        if (textoCitaTolkien != null)
+        {
+            textoCitaTolkien.SetActive(false);
+        }
+
+        // Antes de prender el panel, elegimos un tip al azar y se lo pasamos a la UI
         if (textoTip != null)
         {
             int tipAleatorio = Random.Range(0, tipsLore.Length);
