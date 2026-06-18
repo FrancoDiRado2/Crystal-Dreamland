@@ -2,45 +2,63 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using UnityEngine.InputSystem;
+using TMPro;
 
 public class StoryboardCinematic : MonoBehaviour
 {
     [Header("Contenedores Principales")]
-    [Tooltip("El Canvas completo de esta cinemática")]
     public GameObject cinematicCanvas;
-    [Tooltip("El objeto Padre o Canvas de tu Menú Principal normal")]
     public GameObject mainMenuContainer; 
 
     [Header("Elementos de la Cinemática")]
-    [Tooltip("La imagen donde se muestran tus dibujos")]
+    public GameObject blackBackground; 
     public Image storyboardDisplay; 
-    [Tooltip("El cuadrado 100% negro que tapa los dibujos (Telón)")]
     public Image fadeCurtain; 
+    public TextMeshProUGUI subtitleText; 
 
-    [Header("Secuencia de Dibujos")]
+    [Header("Secuencia (Imágenes, Audios y Textos)")]
     public Sprite[] storyboardPanels; 
+    public AudioClip[] narratorClips; 
+    
+    [TextArea(2, 5)] 
+    public string[] subtitles; 
 
-    [Header("Tiempos (Segundos)")]
-    public float fadeDuration = 1.0f; // Tiempo en abrir/cerrar el telón
-    public float displayDuration = 3.5f; // Tiempo que miras el dibujo
+    [Header("Audio Source")]
+    public AudioSource narratorSource;
+
+    [Header("Efecto Papiro Quemado")]
+    public Material burnMaterial; 
+    public float burnDuration = 2.5f;
+
+    [Header("Tiempos y Zoom")]
+    public float fadeDuration = 2.0f; 
+    public float minDisplayDuration = 3.5f; 
+    public float zoomAmount = 1.08f; 
+
+    [Header("Animación Final")]
+    public GameObject delayedMenuAnimation; 
+    [Tooltip("Cuántos segundos ANTES de que termine de quemarse querés que arranque el humo")]
+    public float smokeEarlyStart = 0.5f; // 🌟 NUEVO: El control del Pre-roll
 
     private Coroutine cinematicCoroutine;
 
     private void Start()
     {
-        // 1. Apagamos el menú principal de fondo
         if (mainMenuContainer != null) mainMenuContainer.SetActive(false);
-        
-        // 2. Arrancamos con el telón 100% negro
+        if (blackBackground != null) blackBackground.SetActive(true);
+        if (delayedMenuAnimation != null) delayedMenuAnimation.SetActive(false); 
+
         SetCurtainAlpha(1f);
-        
-        // 3. Empieza la película
+        if (subtitleText != null) subtitleText.text = "";
+
+        storyboardDisplay.material = null; 
+        if (burnMaterial != null) burnMaterial.SetFloat("_BurnAmount", 0f);
+
         cinematicCoroutine = StartCoroutine(PlaySequence());
     }
 
     private void Update()
     {
-        // Chequeamos el Enter (Nuevo Input System) para saltar la cinemática
         if (Keyboard.current != null)
         {
             if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame)
@@ -52,29 +70,111 @@ public class StoryboardCinematic : MonoBehaviour
 
     private IEnumerator PlaySequence()
     {
-        // El dibujo siempre es sólido, la opacidad se la cambiamos al telón
         Color displayColor = storyboardDisplay.color;
         displayColor.a = 1f;
         storyboardDisplay.color = displayColor;
 
-        foreach (Sprite panel in storyboardPanels)
+        for (int i = 0; i < storyboardPanels.Length; i++)
         {
-            // Telón cerrado y preparamos el dibujo
             SetCurtainAlpha(1f);
-            storyboardDisplay.sprite = panel;
+            storyboardDisplay.sprite = storyboardPanels[i];
+            storyboardDisplay.transform.localScale = Vector3.one; 
 
-            // FADE IN: El telón negro se vuelve transparente
+            float waitTime = minDisplayDuration; 
+            if (narratorClips.Length > i && narratorClips[i] != null && narratorSource != null)
+            {
+                waitTime = Mathf.Max(minDisplayDuration, narratorClips[i].length + 0.5f);
+            }
+
+            bool isLastPanel = (i == storyboardPanels.Length - 1);
+            float currentOutDuration = (isLastPanel && burnMaterial != null) ? burnDuration : fadeDuration;
+            
+            float totalSlideDuration = fadeDuration + waitTime + currentOutDuration;
+            StartCoroutine(ZoomImage(totalSlideDuration));
+
+            // 1. FADE IN
             yield return FadeCurtainAlpha(1f, 0f, fadeDuration);
 
-            // DISPLAY: Tiempo que el jugador lee/mira
-            yield return new WaitForSeconds(displayDuration);
+            // 2. SUBTÍTULO
+            if (subtitles.Length > i && subtitleText != null)
+            {
+                subtitleText.text = subtitles[i];
+            }
 
-            // FADE OUT: El telón negro vuelve a tapar todo
-            yield return FadeCurtainAlpha(0f, 1f, fadeDuration);
+            // 3. AUDIO
+            if (narratorClips.Length > i && narratorClips[i] != null && narratorSource != null)
+            {
+                narratorSource.clip = narratorClips[i];
+                narratorSource.Play();
+            }
+
+            // 4. ESPERAR
+            yield return new WaitForSeconds(waitTime);
+
+            // 5. BORRAR SUBTÍTULO
+            if (subtitleText != null) subtitleText.text = "";
+
+            // 6. TRANSICIÓN
+            if (isLastPanel && burnMaterial != null)
+            {
+                if (mainMenuContainer != null) mainMenuContainer.SetActive(true);
+                if (blackBackground != null) blackBackground.SetActive(false);
+
+                // Se quema la imagen (y prende el humo por dentro un ratito antes)
+                yield return BurnImage(burnDuration);
+            }
+            else
+            {
+                yield return FadeCurtainAlpha(0f, 1f, fadeDuration);
+            }
         }
 
-        // Fin de la secuencia
         EndCinematic();
+    }
+
+    private IEnumerator ZoomImage(float duration)
+    {
+        float t = 0f;
+        Vector3 startScale = Vector3.one;
+        Vector3 endScale = new Vector3(zoomAmount, zoomAmount, 1f);
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            storyboardDisplay.transform.localScale = Vector3.Lerp(startScale, endScale, t / duration);
+            yield return null;
+        }
+    }
+
+    private IEnumerator BurnImage(float duration)
+    {
+        storyboardDisplay.material = burnMaterial;
+        float t = 0f;
+        bool smokePreloaded = false;
+        
+        // Calculamos en qué segundo tiene que arrancar el humo
+        float timeToStartSmoke = Mathf.Max(0f, duration - smokeEarlyStart);
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+
+            // 🌟 Si ya llegamos a ese segundo límite, prendemos el humo silenciosamente
+            if (!smokePreloaded && t >= timeToStartSmoke)
+            {
+                if (delayedMenuAnimation != null) delayedMenuAnimation.SetActive(true);
+                smokePreloaded = true;
+            }
+
+            float burnValue = Mathf.Lerp(0f, 1f, t / duration);
+            burnMaterial.SetFloat("_BurnAmount", burnValue); 
+            yield return null;
+        }
+        
+        burnMaterial.SetFloat("_BurnAmount", 1f);
+        
+        // Seguro por si el tiempo era raro y no se prendió
+        if (!smokePreloaded && delayedMenuAnimation != null) delayedMenuAnimation.SetActive(true);
     }
 
     private IEnumerator FadeCurtainAlpha(float startAlpha, float endAlpha, float duration)
@@ -108,16 +208,19 @@ public class StoryboardCinematic : MonoBehaviour
 
     private void SkipCinematic()
     {
-        if (cinematicCoroutine != null) StopCoroutine(cinematicCoroutine); 
+        StopAllCoroutines(); 
+        if (narratorSource != null) narratorSource.Stop();
+        if (subtitleText != null) subtitleText.text = "";
         EndCinematic();
     }
 
     private void EndCinematic()
     {
-        // Apagamos la burbuja de la cinemática
+        storyboardDisplay.material = null; 
+        if (burnMaterial != null) burnMaterial.SetFloat("_BurnAmount", 0f);
+
         if (cinematicCanvas != null) cinematicCanvas.SetActive(false);
-        
-        // Prendemos el Menú Principal
         if (mainMenuContainer != null) mainMenuContainer.SetActive(true);
+        if (delayedMenuAnimation != null) delayedMenuAnimation.SetActive(true);
     }
 }
