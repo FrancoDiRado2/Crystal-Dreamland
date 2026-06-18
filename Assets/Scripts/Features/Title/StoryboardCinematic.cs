@@ -35,10 +35,17 @@ public class StoryboardCinematic : MonoBehaviour
     public float minDisplayDuration = 3.5f; 
     public float zoomAmount = 1.08f; 
 
-    [Header("Animación Final")]
+    [Header("Animación Final del Menú")]
     public GameObject delayedMenuAnimation; 
-    [Tooltip("Cuántos segundos ANTES de que termine de quemarse querés que arranque el humo")]
-    public float smokeEarlyStart = 0.5f; // 🌟 NUEVO: El control del Pre-roll
+    public float smokeEarlyStart = 1.5f;
+
+    [Header("Efecto 'Soplo' de Botones")]
+    [Tooltip("El Canvas Group que tiene tus botones adentro")]
+    public CanvasGroup menuButtonsGroup; // 🌟 NUEVO: Control de los botones
+    [Tooltip("Segundos a esperar desde que arranca el fuego hasta que aparecen los botones")]
+    public float buttonFadeDelay = 2.0f; // 🌟 NUEVO: El timing del soplo
+    [Tooltip("Cuánto tarda en aparecer suavemente el menú de botones")]
+    public float buttonFadeDuration = 1.0f; 
 
     private Coroutine cinematicCoroutine;
 
@@ -47,6 +54,14 @@ public class StoryboardCinematic : MonoBehaviour
         if (mainMenuContainer != null) mainMenuContainer.SetActive(false);
         if (blackBackground != null) blackBackground.SetActive(true);
         if (delayedMenuAnimation != null) delayedMenuAnimation.SetActive(false); 
+
+        // Escondemos los botones al arrancar
+        if (menuButtonsGroup != null)
+        {
+            menuButtonsGroup.alpha = 0f;
+            menuButtonsGroup.interactable = false;
+            menuButtonsGroup.blocksRaycasts = false;
+        }
 
         SetCurtainAlpha(1f);
         if (subtitleText != null) subtitleText.text = "";
@@ -92,35 +107,31 @@ public class StoryboardCinematic : MonoBehaviour
             float totalSlideDuration = fadeDuration + waitTime + currentOutDuration;
             StartCoroutine(ZoomImage(totalSlideDuration));
 
-            // 1. FADE IN
             yield return FadeCurtainAlpha(1f, 0f, fadeDuration);
 
-            // 2. SUBTÍTULO
             if (subtitles.Length > i && subtitleText != null)
             {
                 subtitleText.text = subtitles[i];
             }
 
-            // 3. AUDIO
             if (narratorClips.Length > i && narratorClips[i] != null && narratorSource != null)
             {
                 narratorSource.clip = narratorClips[i];
                 narratorSource.Play();
             }
 
-            // 4. ESPERAR
             yield return new WaitForSeconds(waitTime);
 
-            // 5. BORRAR SUBTÍTULO
             if (subtitleText != null) subtitleText.text = "";
 
-            // 6. TRANSICIÓN
             if (isLastPanel && burnMaterial != null)
             {
                 if (mainMenuContainer != null) mainMenuContainer.SetActive(true);
                 if (blackBackground != null) blackBackground.SetActive(false);
 
-                // Se quema la imagen (y prende el humo por dentro un ratito antes)
+                // 🌟 Arrancamos el temporizador de los botones en paralelo
+                if (menuButtonsGroup != null) StartCoroutine(FadeInButtons());
+
                 yield return BurnImage(burnDuration);
             }
             else
@@ -130,6 +141,26 @@ public class StoryboardCinematic : MonoBehaviour
         }
 
         EndCinematic();
+    }
+
+    // 🌟 LA MAGIA DE LOS BOTONES
+    private IEnumerator FadeInButtons()
+    {
+        // Esperamos a que llegue el momento del "soplo"
+        yield return new WaitForSeconds(buttonFadeDelay);
+
+        float t = 0f;
+        while (t < buttonFadeDuration)
+        {
+            t += Time.deltaTime;
+            menuButtonsGroup.alpha = Mathf.Lerp(0f, 1f, t / buttonFadeDuration);
+            yield return null;
+        }
+        
+        // Lo dejamos 100% visible y clickeable
+        menuButtonsGroup.alpha = 1f;
+        menuButtonsGroup.interactable = true;
+        menuButtonsGroup.blocksRaycasts = true;
     }
 
     private IEnumerator ZoomImage(float duration)
@@ -152,14 +183,12 @@ public class StoryboardCinematic : MonoBehaviour
         float t = 0f;
         bool smokePreloaded = false;
         
-        // Calculamos en qué segundo tiene que arrancar el humo
         float timeToStartSmoke = Mathf.Max(0f, duration - smokeEarlyStart);
 
         while (t < duration)
         {
             t += Time.deltaTime;
 
-            // 🌟 Si ya llegamos a ese segundo límite, prendemos el humo silenciosamente
             if (!smokePreloaded && t >= timeToStartSmoke)
             {
                 if (delayedMenuAnimation != null) delayedMenuAnimation.SetActive(true);
@@ -172,8 +201,6 @@ public class StoryboardCinematic : MonoBehaviour
         }
         
         burnMaterial.SetFloat("_BurnAmount", 1f);
-        
-        // Seguro por si el tiempo era raro y no se prendió
         if (!smokePreloaded && delayedMenuAnimation != null) delayedMenuAnimation.SetActive(true);
     }
 
@@ -222,5 +249,13 @@ public class StoryboardCinematic : MonoBehaviour
         if (cinematicCanvas != null) cinematicCanvas.SetActive(false);
         if (mainMenuContainer != null) mainMenuContainer.SetActive(true);
         if (delayedMenuAnimation != null) delayedMenuAnimation.SetActive(true);
+
+        // Si el jugador hace Skip, forzamos a que los botones se vean al instante
+        if (menuButtonsGroup != null)
+        {
+            menuButtonsGroup.alpha = 1f;
+            menuButtonsGroup.interactable = true;
+            menuButtonsGroup.blocksRaycasts = true;
+        }
     }
 }
