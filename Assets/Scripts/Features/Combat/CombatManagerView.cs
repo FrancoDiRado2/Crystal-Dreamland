@@ -18,26 +18,30 @@ public class CombatManagerView : MonoBehaviour
     public GameObject combatCanvas; 
 
     [Header("Inmersión Combate")]
-    public GameObject groundTorch; // 🌟 NUEVO: La antorcha tirada en el suelo
-    private bool _playerHadTorch = false; // Memoria para saber si se la devolvemos
+    public GameObject groundTorch; 
+    private bool _playerHadTorch = false; 
 
     [Header("Transición Estilo Pokémon")]
-    public RawImage transitionScreen; 
+    public RawImage transitionScreen; // 🌟 Esta es la RawImage que usaremos para la sangre de fondo
     public Material swirlMaterial;    
 
     [Header("UI Victoria Combate")]
     public GameObject victoryPanel; 
 
     [Header("Game Over / Victoria")]
-    public GameObject gameOverCanvas; 
+    public GameObject gameOverCanvas; // 🌟 Tu panel que contiene el TXT y el Botón
     public GameObject garmanarModel; 
     public GameObject muroInvisible; 
     
+    [Header("Efectos Final Jefe (Implosión)")]
+    public ParticleSystem garmanarDeathParticles; 
+    public Material garmanarDissolveMaterial; 
+    
     [Header("Textos")]
     public TextMeshProUGUI portalStatusText; 
-    public TextMeshProUGUI portalStatusShadow; // 🌟 AGREGADO: Sombra del portal
+    public TextMeshProUGUI portalStatusShadow; 
     public TextMeshProUGUI powerStatusText; 
-    public TextMeshProUGUI powerStatusShadow; // 🌟 AGREGADO: Sombra del poder
+    public TextMeshProUGUI powerStatusShadow; 
     public GameObject objectiveText;
 
     [Header("AUDIO - Combate")]
@@ -61,6 +65,11 @@ public class CombatManagerView : MonoBehaviour
 
         _enemyViewModel.OnCombatStarted += StartCombatTransition;
         _combatViewModel.OnCombatEnded += EndCombatTransition; 
+        
+        if (globalMusicSource != null)
+        {
+            globalMusicSource.volume = 0.8f; 
+        }
     }
 
     private void StartCombatTransition()
@@ -70,17 +79,17 @@ public class CombatManagerView : MonoBehaviour
 
     private IEnumerator StartCombatRoutine()
     {
-        // 🌟 NUEVO: Si el narrador sigue hablando, lo cortamos en seco
         if (LevelNarrator.Instance != null) LevelNarrator.Instance.CortarNarracion();
 
         if (transitionScreen != null) transitionScreen.raycastTarget = true;
         if (sfxSource != null && transitionSfx != null) sfxSource.PlayOneShot(transitionSfx);
-        if (globalMusicSource != null) globalMusicSource.Pause();
+        
+        if (globalMusicSource != null) StartCoroutine(FadeOutMusic(globalMusicSource, 1f));
+        
         Time.timeScale = 0f;
 
         if (playerView != null) 
         {
-            // 🌟 NUEVO: Chequeamos si entró con antorcha y se la sacamos
             _playerHadTorch = playerView.IsTorchActive;
             if (_playerHadTorch) playerView.ForceTorchState(false);
 
@@ -119,7 +128,6 @@ public class CombatManagerView : MonoBehaviour
         if (mainCamera != null) mainCamera.SetActive(false); 
         if (combatCamera != null) combatCamera.SetActive(true);
 
-        // 🌟 NUEVO: Prendemos la antorcha del suelo (Solo si la tenía en la mano)
         if (groundTorch != null) groundTorch.SetActive(_playerHadTorch);
 
         Camera cCam = combatCamera.GetComponent<Camera>();
@@ -150,6 +158,8 @@ public class CombatManagerView : MonoBehaviour
 
         if (combatBgmSource != null && combatMusic != null)
         {
+            combatBgmSource.pitch = 1f; 
+            combatBgmSource.volume = 0.6f;
             combatBgmSource.clip = combatMusic;
             combatBgmSource.Play();
         }
@@ -165,45 +175,58 @@ public class CombatManagerView : MonoBehaviour
     private IEnumerator EndCombatRoutine(bool playerWon)
     {
         if (combatCanvas != null) combatCanvas.SetActive(false);
-        if (combatBgmSource != null) combatBgmSource.Stop();
-        
-        // 🌟 NUEVO: Apagamos la antorcha del suelo (siempre)
         if (groundTorch != null) groundTorch.SetActive(false);
 
         if (playerWon)
         {
+            // --- VICTORIA (Gemanar muere) ---
             Time.timeScale = 0.2f; 
             if (sfxSource != null && victoryMusicSfx != null) sfxSource.PlayOneShot(victoryMusicSfx);
             if (sfxSource != null && enemyDeathSfx != null) sfxSource.PlayOneShot(enemyDeathSfx);
+            if (combatBgmSource != null) combatBgmSource.Stop();
 
             if (victoryPanel != null) victoryPanel.SetActive(true);
 
             if (garmanarModel != null)
             {
-                float t = 0f;
-                Vector3 escalaOriginal = garmanarModel.transform.localScale;
-                Vector3 posicionOriginal = garmanarModel.transform.position;
-                
-                while (t < 1.5f)
+                Vector3 originalPos = garmanarModel.transform.position;
+                float shakeTime = 0f;
+                while (shakeTime < 0.5f) 
                 {
-                    t += Time.unscaledDeltaTime;
-                    float progress = t / 1.5f;
-                    
-                    garmanarModel.transform.localScale = Vector3.Lerp(escalaOriginal, new Vector3(escalaOriginal.x, 0f, escalaOriginal.z), progress);
-                    garmanarModel.transform.position = posicionOriginal + (Vector3.down * (progress * 1.5f));
-                    garmanarModel.SetActive(!garmanarModel.activeSelf);
-                    
+                    shakeTime += Time.unscaledDeltaTime;
+                    garmanarModel.transform.position = originalPos + (Random.insideUnitSphere * 0.2f);
                     yield return null;
                 }
+                garmanarModel.transform.position = originalPos;
+
+                if (garmanarDeathParticles != null) garmanarDeathParticles.Play();
+
+                if (garmanarDissolveMaterial != null)
+                {
+                    Renderer[] renderers = garmanarModel.GetComponentsInChildren<Renderer>();
+                    foreach (var r in renderers) r.material = garmanarDissolveMaterial;
+
+                    float t = 0f;
+                    while (t < 2f) 
+                    {
+                        t += Time.unscaledDeltaTime;
+                        garmanarDissolveMaterial.SetFloat("_BurnAmount", Mathf.Lerp(0f, 1f, t / 2f));
+                        yield return null;
+                    }
+                }
+                
                 garmanarModel.SetActive(false); 
             }
 
-            yield return new WaitForSecondsRealtime(1.5f);
+            yield return new WaitForSecondsRealtime(2.5f);
             if (victoryPanel != null) victoryPanel.SetActive(false);
 
             Time.timeScale = 1f; 
-
-            if (globalMusicSource != null) globalMusicSource.UnPause();
+            if (globalMusicSource != null) 
+            {
+                globalMusicSource.UnPause();
+                globalMusicSource.volume = 0.8f; 
+            }
 
             if (combatCamera != null) combatCamera.SetActive(false);
             if (mainCamera != null) mainCamera.SetActive(true);
@@ -212,7 +235,6 @@ public class CombatManagerView : MonoBehaviour
             if (playerView != null) 
             {
                 playerView.enabled = true; 
-                // 🌟 NUEVO: Le devolvemos la antorcha a la mano si la tenía
                 if (_playerHadTorch) playerView.ForceTorchState(true);
 
                 if (playerAnimator != null)
@@ -224,20 +246,16 @@ public class CombatManagerView : MonoBehaviour
 
             if (muroInvisible != null) muroInvisible.SetActive(true);
             
-            // 🌟 AGREGADO: Actualiza el texto original y también su sombra
             if (portalStatusText != null) 
             {
                 portalStatusText.text = "¡Cross the Gate!";
                 if (portalStatusShadow != null) portalStatusShadow.text = portalStatusText.text;
             }
-            
-            // 🌟 AGREGADO: Actualiza el texto original y también su sombra
             if (powerStatusText != null) 
             {
                 powerStatusText.text = "Free Way";
                 if (powerStatusShadow != null) powerStatusShadow.text = powerStatusText.text;
             }
-            
             if (objectiveText != null) objectiveText.SetActive(false);
             if (_combatViewModel != null) _combatViewModel.ClearTurnMessage(); 
 
@@ -246,39 +264,162 @@ public class CombatManagerView : MonoBehaviour
         }
         else
         {
-            if (playerView != null) playerView.PlayDeathAnimation();
+            // --- GAME OVER (Aman muere) ---
+            if (playerView != null) playerView.PlayDeathAnimation(); 
             if (sfxSource != null && defeatMusicSfx != null) sfxSource.PlayOneShot(defeatMusicSfx);
 
+            Time.timeScale = 0.3f;
+            if (combatBgmSource != null) StartCoroutine(DistortMusic(combatBgmSource));
+
+            // 1. 🌟 FIX DE CAÍDA: Usamos el truco de la jerarquía para que caiga desde los pies
+            if (playerView != null)
+            {
+                StartCoroutine(HierarchyCollapsePlayer(playerView.transform, 1.5f)); 
+            }
+
+            // 2. 🌟 FIX DE UI: Limpiamos y ordenamos la pantalla roja
             if (transitionScreen != null)
             {
+                // Limpiamos la RawImage por si tenía el shader de swirl puesto
                 transitionScreen.material = null; 
                 transitionScreen.texture = null;
-                transitionScreen.color = new Color(0.4f, 0f, 0f, 0f); 
+                
+                // Color rojo lúgubre
+                transitionScreen.color = new Color(0.5f, 0f, 0f, 0f); 
                 transitionScreen.gameObject.SetActive(true);
 
-                float t = 0f;
-                while (t < 2f) 
-                {
-                    t += Time.unscaledDeltaTime;
-                    float alpha = Mathf.Lerp(0f, 0.85f, t / 2f); 
-                    transitionScreen.color = new Color(0.4f, 0f, 0f, alpha);
-                    Time.timeScale = Mathf.Lerp(1f, 0f, t / 2f); 
-                    yield return null;
-                }
+                // Mandamos la imagen de sangre AL FONDO de su Canvas
+                transitionScreen.transform.SetAsFirstSibling(); 
+                transitionScreen.raycastTarget = false; // Que no bloquee clics
 
-                transitionScreen.raycastTarget = false;
+                // Fade In de la sangre de fondo
+                StartCoroutine(FadeBloodBackground(2.5f));
             }
 
             Time.timeScale = 0f;
-            if (gameOverCanvas != null) gameOverCanvas.SetActive(true);
+            
+            if (gameOverCanvas != null) 
+            {
+                gameOverCanvas.SetActive(true);
+                
+                // Mandamos tu menú de Try Again AL FRENTE de todo
+                gameOverCanvas.transform.SetAsLastSibling(); 
+
+                CanvasGroup cg = gameOverCanvas.GetComponent<CanvasGroup>();
+                if (cg == null) cg = gameOverCanvas.AddComponent<CanvasGroup>();
+                
+                // Aseguramos que el color del menú Try Again sea limpio (Blanco puro/Original)
+                Graphic[] graphics = gameOverCanvas.GetComponentsInChildren<Graphic>();
+                foreach (var g in graphics)
+                {
+                    if (g.gameObject != transitionScreen.gameObject) // No tocar la sangre
+                    {
+                        Color c = g.color;
+                        c.a = graphics is TextMeshProUGUI ? c.a : 1f; // Respetar alphas de textos
+                        // Si el botón o el texto se veían rojos, esto los limpia:
+                        if (g is Image && g.color.r > 0.8f && g.color.g < 0.2f) g.color = Color.white; 
+                    }
+                }
+
+                // Fade In ESPECTRAL del menú (limpio)
+                StartCoroutine(FadeInGameOverMenu(cg, 1.5f));
+            }
             
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
     }
 
+    // --- CORRUTINAS DE DRAMA ---
+    private IEnumerator DistortMusic(AudioSource source)
+    {
+        float t = 0f;
+        while (t < 2f)
+        {
+            t += Time.unscaledDeltaTime;
+            source.pitch = Mathf.Lerp(1f, 0.4f, t / 2f); 
+            source.volume = Mathf.Lerp(0.6f, 0.1f, t / 2f); 
+            yield return null;
+        }
+        source.Stop();
+    }
+
+    private IEnumerator FadeBloodBackground(float duration)
+    {
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            // Opacidad máxima de 0.75f para que no tape todo, se vea lúgubre pero legible
+            float alpha = Mathf.Lerp(0f, 0.75f, t / duration); 
+            transitionScreen.color = new Color(0.5f, 0f, 0f, alpha);
+            yield return null;
+        }
+    }
+
+    private IEnumerator FadeInGameOverMenu(CanvasGroup cg, float duration)
+    {
+        cg.alpha = 0f;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            cg.alpha = Mathf.Lerp(0f, 1f, t / duration);
+            yield return null;
+        }
+        cg.alpha = 1f;
+    }
+
+    private IEnumerator HierarchyCollapsePlayer(Transform playerTransform, float duration)
+    {
+        // 1. Apagar cerebros
+        if (playerAnimator != null) playerAnimator.enabled = false;
+        CharacterController cc = playerTransform.GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+
+        // 2. Crear el objeto "Pivote de Pies" invisible
+        GameObject pivotGO = new GameObject("DeathPivot_Feet");
+        // Lo posicionamos exactamente donde están los pies de Aman (suponiendo ombligo a 1m)
+        pivotGO.transform.position = playerTransform.position + Vector3.down * 1f; 
+        pivotGO.transform.rotation = playerTransform.rotation;
+
+        // 3. Emparentar (Aman ahora es hija del pivote invisible)
+        playerTransform.SetParent(pivotGO.transform);
+
+        // 4. Rotar el PIVOTE (cae como tabla)
+        Quaternion startRot = pivotGO.transform.rotation;
+        // Rotamos 90 grados hacia atrás (eje X local negativo)
+        Quaternion endRot = startRot * Quaternion.Euler(-90f, 0f, 0f); 
+
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            pivotGO.transform.rotation = Quaternion.Slerp(startRot, endRot, t / duration);
+            yield return null;
+        }
+        
+        // Opcional: Soltar jerarquía al terminar
+        // playerTransform.SetParent(null);
+        // Destroy(pivotGO);
+    }
+
+    private IEnumerator FadeOutMusic(AudioSource source, float duration)
+    {
+        float startVolume = source.volume;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            source.volume = Mathf.Lerp(startVolume, 0f, t / duration);
+            yield return null;
+        }
+        source.Pause();
+    }
+
     public void RestartLevel()
     {
+        Time.timeScale = 1f; 
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
