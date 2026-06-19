@@ -38,7 +38,7 @@ public class StoryboardCinematic : MonoBehaviour
 
     [Header("Efecto del Humo (Video Separado)")]
     [Tooltip("El VideoPlayer que tiene SOLAMENTE el humo.")]
-    public VideoPlayer smokeVideoPlayer; // 🌟 AHORA ESTO ES SOLO PARA EL HUMO
+    public VideoPlayer smokeVideoPlayer; 
     [Tooltip("Segundo exacto donde hace el 'soplo' épico (Ej: 4.5)")]
     public double smokeStartTime = 0f; 
     [Tooltip("Cuántos segundos ANTES de terminar el fuego arranca el humo")]
@@ -55,6 +55,10 @@ public class StoryboardCinematic : MonoBehaviour
 
     private void Start()
     {
+        // 🌟 NUEVO: Ocultamos el cursor al arrancar la peli
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+
         if (storyboardDisplay != null) storyboardDisplay.gameObject.SetActive(true);
         if (fadeCurtain != null) fadeCurtain.gameObject.SetActive(true);
 
@@ -131,7 +135,6 @@ public class StoryboardCinematic : MonoBehaviour
                 if (mainMenuContainer != null) mainMenuContainer.SetActive(true);
                 if (blackBackground != null) blackBackground.SetActive(false);
 
-                // Precarga el video del humo sin mostrarlo
                 if (smokeVideoPlayer != null) smokeVideoPlayer.Prepare();
 
                 yield return BurnImage(burnDuration);
@@ -204,7 +207,6 @@ public class StoryboardCinematic : MonoBehaviour
             {
                 if (smokeVideoPlayer != null && !isSkipping) 
                 {
-                    // Transición normal: saltamos al instante épico
                     smokeVideoPlayer.time = smokeStartTime; 
                     smokeVideoPlayer.Play();
                 }
@@ -273,6 +275,10 @@ public class StoryboardCinematic : MonoBehaviour
 
     private void EndCinematic()
     {
+        // 🌟 NUEVO: Liberamos la manito medieval cuando termina todo
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+
         storyboardDisplay.material = null; 
         if (burnMaterial != null) burnMaterial.SetFloat("_BurnAmount", 0f);
 
@@ -285,17 +291,16 @@ public class StoryboardCinematic : MonoBehaviour
         
         if (smokeVideoPlayer != null) 
         {
-            // 🌟 LA REGLA DE ORO DEL SKIP
             if (isSkipping)
             {
-                smokeVideoPlayer.time = 0f; // Humo desde el principio
+                smokeVideoPlayer.time = 0f; 
             }
             smokeVideoPlayer.Play();
         }
 
         if (menuButtonsGroup != null)
         {
-            menuButtonsGroup.alpha = 1f; // Botones visibles de golpe
+            menuButtonsGroup.alpha = 1f; 
             menuButtonsGroup.interactable = true;
             menuButtonsGroup.blocksRaycasts = true;
         }
