@@ -22,25 +22,22 @@ public class CombatManagerView : MonoBehaviour
     private bool _playerHadTorch = false; 
 
     [Header("Transición Estilo Pokémon")]
-    public RawImage transitionScreen; // 🌟 ESTO VUELVE A SER SOLO DEL REMOLINO INTACTO
+    public RawImage transitionScreen; 
     public Material swirlMaterial;    
 
     [Header("UI Victoria Combate")]
     public GameObject victoryPanel; 
 
     [Header("Game Over / Victoria")]
-    public GameObject gameOverCanvas; // Tu Canvas apagado de siempre
-    [Tooltip("La RawImage roja que pusiste adentro del GameOverCanvas")]
-    public RawImage bloodScreen; // 🌟 NUEVO: El fondo rojo exclusivo
-    [Tooltip("Un CanvasGroup que contenga tu Texto y Botón de Try Again")]
-    public CanvasGroup gameOverUIGroup; // 🌟 NUEVO: Para que los botones aparezcan suavemente
+    public GameObject gameOverCanvas; 
+    public RawImage bloodScreen; 
+    public CanvasGroup gameOverUIGroup; 
 
     public GameObject garmanarModel; 
     public GameObject muroInvisible; 
     
     [Header("Efectos Final Jefe (Implosión)")]
     public ParticleSystem garmanarDeathParticles; 
-    public Material garmanarDissolveMaterial; 
     
     [Header("Textos")]
     public TextMeshProUGUI portalStatusText; 
@@ -185,7 +182,7 @@ public class CombatManagerView : MonoBehaviour
         if (playerWon)
         {
             // --- VICTORIA ---
-            Time.timeScale = 0.2f; 
+            Time.timeScale = 0.2f; // Cámara lenta épica
             if (sfxSource != null && victoryMusicSfx != null) sfxSource.PlayOneShot(victoryMusicSfx);
             if (sfxSource != null && enemyDeathSfx != null) sfxSource.PlayOneShot(enemyDeathSfx);
             if (combatBgmSource != null) combatBgmSource.Stop();
@@ -196,36 +193,39 @@ public class CombatManagerView : MonoBehaviour
             {
                 Vector3 originalPos = garmanarModel.transform.position;
                 float shakeTime = 0f;
-                while (shakeTime < 0.5f) 
+                // Tiembla durante 1.5 segundos
+                while (shakeTime < 1.5f) 
                 {
                     shakeTime += Time.unscaledDeltaTime;
-                    garmanarModel.transform.position = originalPos + (Random.insideUnitSphere * 0.2f);
+                    garmanarModel.transform.position = originalPos + (Random.insideUnitSphere * 0.25f);
                     yield return null;
                 }
                 garmanarModel.transform.position = originalPos;
 
-                if (garmanarDeathParticles != null) garmanarDeathParticles.Play();
-
-                if (garmanarDissolveMaterial != null)
+                // 🌟 MAGIA: Reproducimos las partículas PRIMERO
+                if (garmanarDeathParticles != null) 
                 {
-                    Renderer[] renderers = garmanarModel.GetComponentsInChildren<Renderer>();
-                    foreach (var r in renderers) r.material = garmanarDissolveMaterial;
-
-                    float t = 0f;
-                    while (t < 2f) 
-                    {
-                        t += Time.unscaledDeltaTime;
-                        garmanarDissolveMaterial.SetFloat("_BurnAmount", Mathf.Lerp(0f, 1f, t / 2f));
-                        yield return null;
-                    }
+                    // Lo desvinculamos de Garmanar para que nada lo afecte
+                    garmanarDeathParticles.transform.SetParent(null);
+                    garmanarDeathParticles.Play();
                 }
-                garmanarModel.SetActive(false); 
+
+                // 🌟 FIX: En vez de apagar el GameObject entero, apagamos sus "pieles" (Renderers)
+                // Así se vuelve invisible pero sigue existiendo para escupir las partículas
+                Renderer[] renderers = garmanarModel.GetComponentsInChildren<Renderer>();
+                foreach (var r in renderers) r.enabled = false;
+                
+                // También apagamos sus colisiones por si acaso
+                Collider[] colliders = garmanarModel.GetComponentsInChildren<Collider>();
+                foreach (var c in colliders) c.enabled = false;
             }
 
-            yield return new WaitForSecondsRealtime(2.5f);
+            // Tiempo muerto eliminado: 2 segundos en slowmo es suficiente para ver la explosión
+            yield return new WaitForSecondsRealtime(2f);
+            
             if (victoryPanel != null) victoryPanel.SetActive(false);
 
-            Time.timeScale = 1f; 
+            Time.timeScale = 1f; // Vuelve a velocidad normal
             if (globalMusicSource != null) 
             {
                 globalMusicSource.UnPause();
@@ -275,16 +275,13 @@ public class CombatManagerView : MonoBehaviour
             Time.timeScale = 0.3f;
             if (combatBgmSource != null) StartCoroutine(DistortMusic(combatBgmSource));
 
-            // Caída de Aman como tronco
             if (playerView != null)
             {
                 StartCoroutine(HierarchyCollapsePlayer(playerView.transform, 1.5f)); 
             }
 
-            // Prendemos el Canvas que siempre tuviste
             if (gameOverCanvas != null) gameOverCanvas.SetActive(true);
 
-            // Escondemos los botones temporalmente
             if (gameOverUIGroup != null) 
             {
                 gameOverUIGroup.alpha = 0f;
@@ -292,19 +289,16 @@ public class CombatManagerView : MonoBehaviour
                 gameOverUIGroup.blocksRaycasts = false;
             }
 
-            // Hacemos el fade in de la sangre de forma independiente
             if (bloodScreen != null)
             {
                 bloodScreen.color = new Color(0.5f, 0f, 0f, 0f);
                 StartCoroutine(FadeBloodBackground(2.5f));
             }
 
-            // Esperamos un momento trágico mientras ella cae (tiempo real)
             yield return new WaitForSecondsRealtime(2f);
 
             Time.timeScale = 0f;
             
-            // Aparecen los textos inmaculados
             if (gameOverUIGroup != null) 
             {
                 StartCoroutine(FadeInGameOverMenu(gameOverUIGroup, 1.5f));
@@ -315,7 +309,6 @@ public class CombatManagerView : MonoBehaviour
         }
     }
 
-    // --- CORRUTINAS DE DRAMA ---
     private IEnumerator DistortMusic(AudioSource source)
     {
         float t = 0f;

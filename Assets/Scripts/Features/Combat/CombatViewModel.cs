@@ -99,7 +99,7 @@ public class CombatViewModel
         
         await Task.Delay(1000); // Pequeña pausa para que se lea el cartel
 
-        int enemyDamage = 100;
+        int enemyDamage = 1;
         bool isEnemyCritical = UnityEngine.Random.Range(0, 100) < 30;
 
         if (isEnemyCritical)
