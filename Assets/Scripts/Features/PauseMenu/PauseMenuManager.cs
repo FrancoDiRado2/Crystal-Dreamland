@@ -160,4 +160,15 @@ public class PauseMenuManager : MonoBehaviour
             masterSlider.interactable = true; 
         }
     }
+
+    public void ExitGame()
+    {
+        // Esto cierra el juego cuando está buildeado (.exe)
+        Application.Quit();
+        
+        // (Opcional) Esto hace que el botón también funcione en el Editor de Unity
+        #if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+        #endif
+    }
 }
