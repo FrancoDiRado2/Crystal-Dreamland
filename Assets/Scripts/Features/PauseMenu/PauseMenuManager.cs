@@ -13,13 +13,17 @@ public class PauseMenuManager : MonoBehaviour
     public Slider sfxSlider;
     public Toggle muteToggle;
 
-    [Header("Audio")]
+    [Header("Audio (Volumen)")]
     public AudioMixer audioMixer;
+
+    [Header("Audio (SFX Botones)")]
+    public AudioSource uiAudioSource; // 🌟 NUEVO: Para reproducir los clicks
+    public AudioClip hoverSound;      // 🌟 NUEVO: Sonido al pasar el mouse
+    public AudioClip clickSound;      // 🌟 NUEVO: Sonido al hacer clic
 
     private bool isPaused = false;
     private float preMuteMasterVolume; 
 
-    // 🌟 NUEVAS VARIABLES PARA GUARDAR EL ESTADO DEL MOUSE
     private CursorLockMode previousLockState;
     private bool previousCursorVisible;
 
@@ -28,7 +32,6 @@ public class PauseMenuManager : MonoBehaviour
         pauseMenuPanel.SetActive(false);
         muteToggle.isOn = false;
 
-        // 🌟 SINCRONIZAMOS LOS SLIDERS CON EL MIXER (Para mantener los ajustes del Main Menu)
         SyncSlidersWithMixer();
 
         masterSlider.onValueChanged.AddListener(SetMasterVolume);
@@ -70,13 +73,18 @@ public class PauseMenuManager : MonoBehaviour
 
     public void PauseGame()
     {
-        // 🌟 GUARDAMOS CÓMO ESTABA EL MOUSE ANTES DE PAUSAR
         previousLockState = Cursor.lockState;
         previousCursorVisible = Cursor.visible;
 
         pauseMenuPanel.SetActive(true);
         Time.timeScale = 0f; 
         isPaused = true;
+
+        // 🌟 NUEVO: Silenciamos temporalmente al narrador
+        if (LevelNarrator.Instance != null)
+        {
+            LevelNarrator.Instance.PausarNarrador();
+        }
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -88,7 +96,12 @@ public class PauseMenuManager : MonoBehaviour
         Time.timeScale = 1f; 
         isPaused = false;
 
-        // 🌟 RESTAURAMOS EL ESTADO ANTERIOR DEL MOUSE (Combate o Exploración)
+        // 🌟 NUEVO: Reanudamos al narrador
+        if (LevelNarrator.Instance != null)
+        {
+            LevelNarrator.Instance.ReanudarNarrador();
+        }
+
         Cursor.lockState = previousLockState;
         Cursor.visible = previousCursorVisible;
     }
@@ -99,6 +112,24 @@ public class PauseMenuManager : MonoBehaviour
         SceneManager.LoadScene("Main Menu"); 
     }
 
+    // --- MÉTODOS PARA LOS SONIDOS DE LA UI ---
+    public void PlayHoverSound()
+    {
+        if (uiAudioSource != null && hoverSound != null)
+        {
+            uiAudioSource.PlayOneShot(hoverSound);
+        }
+    }
+
+    public void PlayClickSound()
+    {
+        if (uiAudioSource != null && clickSound != null)
+        {
+            uiAudioSource.PlayOneShot(clickSound);
+        }
+    }
+
+    // --- MÉTODOS DE VOLUMEN ---
     private void SetMasterVolume(float value)
     {
         if (!muteToggle.isOn)

@@ -4,7 +4,6 @@ using System.Collections;
 
 public class LevelNarrator : MonoBehaviour
 {
-    // 🌟 Instancia global para poder llamarlo desde otros scripts
     public static LevelNarrator Instance; 
 
     [Header("Referencias")]
@@ -19,12 +18,11 @@ public class LevelNarrator : MonoBehaviour
     [Tooltip("Tiempo entre cada letra. 0.02f es rápido para seguirle el ritmo a la voz acelerada.")]
     public float typingSpeed = 0.02f;
 
-    // 🌟 Esta variable estática SOBREVIVE a los reinicios de escena (Try Again)
     private static bool _yaHablo = false;
+    private bool _isPaused = false; // 🌟 NUEVO: Evita que la corrutina salte audios
 
     private void Awake()
     {
-        // Configuramos el Singleton
         if (Instance == null) Instance = this;
     }
 
@@ -32,14 +30,13 @@ public class LevelNarrator : MonoBehaviour
     {
         if (_subtitleText != null) _subtitleText.gameObject.SetActive(false);
 
-        // Si ya habló en esta ejecución del juego, apagamos el narrador y no hacemos nada
         if (_yaHablo)
         {
             gameObject.SetActive(false);
             return;
         }
 
-        _yaHablo = true; // Marcamos que ya habló para el futuro
+        _yaHablo = true; 
         StartCoroutine(PlayNarrativeSequence());
     }
 
@@ -58,7 +55,9 @@ public class LevelNarrator : MonoBehaviour
                 _audioSource.Play();
 
                 yield return StartCoroutine(TypeText(spanishSubtitles[i]));
-                yield return new WaitWhile(() => _audioSource.isPlaying);
+                
+                // 🌟 FIX: Ahora espera si el audio está sonando O si el juego está en pausa
+                yield return new WaitWhile(() => _audioSource.isPlaying || _isPaused);
                 yield return new WaitForSeconds(0.4f);
             }
         }
@@ -76,12 +75,29 @@ public class LevelNarrator : MonoBehaviour
         }
     }
 
-    // 🌟 NUEVA FUNCIÓN: Corta todo de golpe si empieza el combate
     public void CortarNarracion()
     {
-        StopAllCoroutines(); // Frena la máquina de escribir
-        if (_audioSource != null) _audioSource.Stop(); // Calla al narrador
-        if (_subtitleText != null) _subtitleText.gameObject.SetActive(false); // Esconde el texto
-        gameObject.SetActive(false); // Se apaga a sí mismo
+        StopAllCoroutines(); 
+        if (_audioSource != null) _audioSource.Stop(); 
+        if (_subtitleText != null) _subtitleText.gameObject.SetActive(false); 
+        gameObject.SetActive(false); 
+    }
+
+    public void PausarNarrador()
+    {
+        _isPaused = true; 
+        if (_audioSource != null && _audioSource.isPlaying)
+        {
+            _audioSource.Pause();
+        }
+    }
+
+    public void ReanudarNarrador()
+    {
+        _isPaused = false; 
+        if (_audioSource != null)
+        {
+            _audioSource.UnPause();
+        }
     }
 }
